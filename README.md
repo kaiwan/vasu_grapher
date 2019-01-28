@@ -1,5 +1,5 @@
 # vasu_grapher
-VASU = Virtual Address Space Usermode. A simple console/CLI utility to "graph" (visualize) the process VAS, in effect, the userspace memory map.
+*VASU = Virtual Address Space Usermode*. **A simple console/CLI utility to "graph" (visualize) the Linux user mode process VAS, in effect, the userspace memory map**.
 
 A simple visualization of the userspace of a given process. This works by iterating over the /proc/PID/maps pseudo-file of a given process. We show the segment name, the amount of virtual address space it takes up (within square brackets), and on the right side of each segment entry (at the start), it's usermode virtual address! To aid with visualization of the process VAS, we show a relative "depth" of a segment (or mapping) via it's height.
 
