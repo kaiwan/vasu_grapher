@@ -1,0 +1,44 @@
+#!/bin/bash
+# vasu_graph
+# A simple Virtual Address Space - Usermode - Graphing (uvas_graph)
+# visualization utility
+name=$(basename $0)
+
+logfile_post_process()
+{
+sed -i.bkp "/###\:\:\:/d" ${1}  # take a backup & get rid of the signature line
+sed -i "s/\x1b.....//g" ${1}    # get rid of the ^[(B^[[m characters !
+      # '\x1b' is ESC ! Find it, and then delete it and the following 5 chars
+      # (the five .'s that follow specify this)
+}
+
+[ $# -ne 1 ] && {
+ echo "Usage: ${name} PID-of-process-to-map"
+ exit 1
+}
+ 
+[ ! -f ./do_vgraph.sh ] && {
+ echo "${name}: do_vgraph.sh missing? Aborting..."
+ exit 1
+}
+[ ! -f ./prep_mapsfile.sh ] && {
+ echo "${name}: prep_mapsfile.sh missing? Aborting..."
+ exit 1
+}
+# Check for process existence
+sudo kill -0 $1 >/dev/null 2>&1 || {
+ echo "${name}: PID \"$1\" invalid (or dead now?) Aborting..."
+ exit 1
+}
+
+LOG=log_vasu.txt
+TMPCSV=/tmp/vgrph.csv
+
+./prep_mapsfile.sh $1 ${TMPCSV} || exit 1
+./do_vgraph.sh $1 ${TMPCSV} | tee -a ${LOG}
+rm -f ${TMPCSV}
+logfile_post_process ${LOG}
+echo "$(date): output logged (appended) here :"
+ls -lh ${LOG}
+
+exit 0
