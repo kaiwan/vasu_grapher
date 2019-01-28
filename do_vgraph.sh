@@ -212,73 +212,68 @@ do
 	let k=i+3
     num2=${gArray[${k}]}  # col 4 [int: the second number]
      #printf "%d\n" "${gArray[${k}]}"
-	#---
 
     scaled_sz_fp=$(bc <<< "scale=12; ${sz}/${gTotalLen}*100*${SCALE_FACTOR}")
-    #scaled_sz_fp=$(bc <<< "scale=9; ${sz}/${gTotalLen}*100*${SCALE_FACTOR}")
 	
 	#[ ${scaled_sz_fp} -lt 1 ] && scaled_sz_fp=1
-	# Convert fp to int
+    # Convert fp to int
     if (( $(echo "${scaled_sz_fp} < 1" |bc -l) )); then
-		scaled_sz_int=1
-	else
-		scaled_sz_int=$(LC_ALL=C printf "%.0f" "${scaled_sz_fp}")
-	fi
+	scaled_sz_int=1
+    else
+	scaled_sz_int=$(LC_ALL=C printf "%.0f" "${scaled_sz_fp}")
+    fi
 
-	szKB=$((${sz}/1024))
-	[ ${szKB} -ge 1024 ] && szMB=$(bc <<< "scale=2; ${szKB}/1024.0") || szMB=0
-	# !EMB: if we try and use simple bash arithmetic comparison, we get a 
-	# "integer expression expected" err; hence, use bc:
-	szGB=0
-	if (( $(echo "${szMB} > 1024" |bc -l) )); then
-	  szGB=$(bc <<< "scale=2; ${szMB}/1024.0")
-	fi
-#	[ ${szKB} -ge 1024 ] && szMB=$((szKB/1024)) || szMB=0
-#	[ ${szMB} -ge 1024 ] && szGB=$((szMB/1024)) || szGB=0
+    szKB=$((${sz}/1024))
+    [ ${szKB} -ge 1024 ] && szMB=$(bc <<< "scale=2; ${szKB}/1024.0") || szMB=0
+    # !EMB: if we try and use simple bash arithmetic comparison, we get a 
+    # "integer expression expected" err; hence, use bc:
+    szGB=0
+    if (( $(echo "${szMB} > 1024" |bc -l) )); then
+      szGB=$(bc <<< "scale=2; ${szMB}/1024.0")
+    fi
+#    [ ${szKB} -ge 1024 ] && szMB=$((szKB/1024)) || szMB=0
+#    [ ${szMB} -ge 1024 ] && szGB=$((szMB/1024)) || szGB=0
 
-	[ 0 -eq 1 ] && {
+    [ 0 -eq 1 ] && {
 	fg_cyan
 	printf " {%.9f %d} " ${scaled_sz_fp} ${scaled_sz_int}
 	color_reset
-	}
+    }
 	
-	#--- Drawing :-p  !
-	#fg_blue
-	printf "%s %x\n" "${LIN}" "0x${num1}"
-	printf "|%20s  [%d KB" ${label} ${szKB}
-	if (( $(echo "${szKB} > 1024" |bc -l) )); then
-	  tput bold; printf "  %6.2f MB" ${szMB}
-	  if (( $(echo "${szMB} > 1024" |bc -l) )); then
-	    printf "  %4.2f GB" ${szGB}
-	  fi
-	fi
-	color_reset
-	printf "]\n"
+    #--- Drawing :-p  !
+    #fg_blue
+    printf "%s %x\n" "${LIN}" "0x${num1}"
+    printf "|%20s  [%d KB" ${label} ${szKB}
+    if (( $(echo "${szKB} > 1024" |bc -l) )); then
+      tput bold; printf "  %6.2f MB" ${szMB}
+      if (( $(echo "${szMB} > 1024" |bc -l) )); then
+        printf "  %4.2f GB" ${szGB}
+      fi
+    fi
+    color_reset
+    printf "]\n"
 
-	# draw the sides of the 'box'
-	[ ${scaled_sz_int} -gt ${LIMIT_SCALE_SZ} ] && {
-		scaled_sz_int=${LIMIT_SCALE_SZ}
-		oversized=1
-	}
-	let scaled_sz_int=scaled_sz_int-1  # no box side for single-line
-	for ((x=1; x<${scaled_sz_int}; x++))
-	do
-		printf "%s\n" "${BOX_RT_SIDE}"
-		if [ ${oversized} -eq 1 ] ; then
-			[ ${x} -eq $(((LIMIT_SCALE_SZ-1)/2)) ] && printf "%s\n" "${ELLIPSE_LIN}"
-		fi
-	done
-	#---
-
-	#printf "%s\n" ${LIN}
-	#color_reset
-	#---
-	oversized=0
+    # draw the sides of the 'box'
+    [ ${scaled_sz_int} -gt ${LIMIT_SCALE_SZ} ] && {
+   	scaled_sz_int=${LIMIT_SCALE_SZ}
+   	oversized=1
+    }
+    let scaled_sz_int=scaled_sz_int-1  # no box side for single-line
+    for ((x=1; x<${scaled_sz_int}; x++))
+    do
+   	printf "%s\n" "${BOX_RT_SIDE}"
+   	if [ ${oversized} -eq 1 ] ; then
+   		[ ${x} -eq $(((LIMIT_SCALE_SZ-1)/2)) ] && printf "%s\n" "${ELLIPSE_LIN}"
+   	fi
+    done
+    #---
+   #printf "%s\n" ${LIN}
+   #color_reset
+   #---
+    oversized=0
 done
 
-#fg_blue
 printf "%s %x\n" "${LIN}" "0x${num2}"
-#color_reset
 } # end graphit()
 
 #------------------ i n t e r p r e t _ r e c -------------------------
@@ -286,8 +281,9 @@ printf "%s %x\n" "${LIN}" "0x${num2}"
 # Format:
 #  num1,num2,label
 # eg.
-#  00001000,00057fff,System RAM
+#  7f3390031000,7f3390053000,/lib/x86_64-linux-gnu/libc-2.28.so
 # This above string will be passed as the parameter to this function.
+# Populate the global '4d' array gArray.
 interpret_rec()
 {
 #echo "num=$# p=$@"
@@ -336,18 +332,19 @@ proc_start()
  export IFS=$'\n'
  local i=0
 
- # Header
- printf "\n[=================---   V A S U _ G R A P H   ---====================]\n"
- printf " https://github.com/kaiwan/vasu_grapher\n"
+ #--- Header
+ printf "\n[==================---   V A S U _ G R A P H   ---=====================]\n"
  printf "Virtual Address Space Usermode (VASU) process GRAPHer (via /proc/$1/maps)\n"
+ printf " https://github.com/kaiwan/vasu_grapher\n"
  date
- printf "For process with PID %d, best guess: %s\n\n" \
-	$1 "$(ps -A|grep $1|awk '{print $4}')"
- #printf "[=================-------------------------------====================]\n"
+ local nm=$(head -n1 /proc/$1/comm)
+ printf "\n[==============--- Start memory map PID %d (%s) ---===============]\n" $1 ${nm}
+# printf "<< Memory Map for process PID %d, best guess: %s >>\n\n" $1 "${nm}"
 
  # Redirect to stderr what we don't want in the log
  printf "\n%s: Processing, pl wait ...\n" "${name}" 1>&2
 
+ # Populate the global '4d' array gArray.
  local REC
  for REC in $(cat ${gINFILE})
  do 
@@ -359,6 +356,7 @@ proc_start()
 
  graphit
 
+ printf "\n[==============--- End memory map PID %d (%s) ---===============]\n" $1 ${nm}
 } # end proc_start()
 
 
