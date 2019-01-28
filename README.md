@@ -64,7 +64,8 @@ Mon Jan 28 16:19:31 IST 2019
 +------------------------------------------------------+ 7ffeb7d32000
 |              [vdso]  [8 KB]
 +------------------------------------------------------+ 7ffeb7d34000
-$ ```
-
-
-
+Mon Jan 28 16:19:35 IST 2019: output logged (appended) here :
+-rw-r--r-- 1 kai kai 237K Jan 28 16:19 log_vasu.txt
+$ 
+```
+As a bonus, the output is logged - appended - to the file log_vasu.txt. Lookup this log when done.
