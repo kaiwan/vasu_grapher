@@ -119,7 +119,7 @@ sed --in-place '/^#/d' ${gINFILE}
 #------------------- g e t _ r a n g e _ i n f o ----------------------
 get_range_info()
 {
-# Get the range: start - end
+# Get the process user VAS (virtual addr space) range: start - end
 #  -the first and last numbers!
 local int_start=$(head -n1 ${gINFILE} |cut -d"${gDELIM}" -f1 |sed 's/ //') # also trim
 local int_end=$(tail -n2 ${gINFILE} |head -n1 |cut -d"${gDELIM}" -f2 |sed 's/ //')
@@ -133,6 +133,16 @@ local end_dec=$(printf "%llu" 0x${int_end})
 gTotalLen=$(printf "%llu" $((end_dec-start_dec)))
 gFileLines=$(wc -l ${gINFILE} |awk '{print $1}')
 decho "range: [${start_dec} to ${end_dec}]: total size=${gTotalLen}"
+
+# 32 or 64 bit OS?
+IS_64_BIT=1
+which getconf >/dev/null || {
+  echo "${name}: WARNING! getconf(1) missing, assuming 64-bit OS!"
+} && {
+  local bitw=$(getconf -a|grep -w LONG_BIT)
+  [ ${bitw} -eq 32 ] && IS_64_BIT=0  # implies 32-bit
+}
+#echo "64-bit? ${IS_64_BIT}"
 } # end get_range_info()
 
 #---
@@ -211,7 +221,11 @@ do
 
     #--- Drawing :-p  !
     #fg_blue
-    printf "%s %x\n" "${LIN}" "0x${num1}"
+    [ ${IS_64_BIT} -eq 1 ] && { 
+     printf "%s %016lx\n" "${LIN}" "0x${num1}"
+    } || {
+     printf "%s %08x\n" "${LIN}" "0x${num1}"
+    }
     printf "|%20s  [%d KB" ${label} ${szKB}
     if (( $(echo "${szKB} > 1024" |bc -l) )); then
       tput bold; printf "  %6.2f MB" ${szMB}
@@ -272,7 +286,11 @@ do
     oversized=0
 done
 
-printf "%s %x\n" "${LIN}" "0x${num2}"
+[ ${IS_64_BIT} -eq 1 ] && { 
+ printf "%s %016lx\n" "${LIN}" "0x${num2}"
+} || {
+ printf "%s %08x\n" "${LIN}" "0x${num2}"
+}
 } # end graphit()
 
 #------------------ i n t e r p r e t _ r e c -------------------------
@@ -326,8 +344,8 @@ proc_start()
 
  #--- Header
  tput bold
- printf "\n[==================---   V A S U _ G R A P H   ---=====================]\n"
- printf "Virtual Address Space Usermode (VASU) process GRAPHer (via /proc/$1/maps)\n"
+ printf "\n[================---   V A S U _ G R A P H E R   ---===================]\n"
+ printf "Virtual Address Space Usermode (VASU) process GRAPHER (via /proc/$1/maps)\n"
  printf " https://github.com/kaiwan/vasu_grapher\n"
  color_reset
  date
