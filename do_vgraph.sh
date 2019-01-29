@@ -203,7 +203,7 @@ do
     szKB=$((${seg_sz}/1024))
     [ ${szKB} -ge 1024 ] && szMB=$(bc <<< "scale=2; ${szKB}/1024.0") || szMB=0
     # !EMB: if we try and use simple bash arithmetic comparison, we get a 
-    # "integer expression expected" err; hence, use bc:
+    # "integer expression expected" err; hence, use bc(1):
     szGB=0
     if (( $(echo "${szMB} > 1024" |bc -l) )); then
       szGB=$(bc <<< "scale=2; ${szMB}/1024.0")
@@ -355,11 +355,9 @@ proc_start()
 
 ##### 'main' : execution starts here #####
 
-[ ${EMB} -eq 0 ] && {
-   which bc >/dev/null || {
-     echo "${name}: bc(1) package missing, pl install. Aborting..."
-     exit 1
-   }
+which bc >/dev/null || {
+  echo "${name}: bc(1) package missing, pl install. Aborting..."
+  exit 1
 }
 
 [ $# -ne 2 ] && {
