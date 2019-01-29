@@ -121,7 +121,9 @@ get_range_info()
 # Get the range: start - end
 #  -the first and last numbers!
 local int_start=$(head -n1 ${gINFILE} |cut -d"${gDELIM}" -f1 |sed 's/ //') # also trim
-local int_end=$(tail -n1 ${gINFILE} |cut -d"${gDELIM}" -f2 |sed 's/ //')
+local int_end=$(tail -n2 ${gINFILE} |head -n1 |cut -d"${gDELIM}" -f2 |sed 's/ //')
+#decho "int_start = $int_start int_end $int_end"
+#local int_end=$(tail -n1 ${gINFILE} |cut -d"${gDELIM}" -f2 |sed 's/ //')
 
 # RELOOK : int value overflows here w/ large 64-bit # as input
 # Fixed: use printf w/ %llu fmt
@@ -129,7 +131,7 @@ local start_dec=$(printf "%llu" 0x${int_start})   #$(echo $((16#${int_start})))
 local end_dec=$(printf "%llu" 0x${int_end})
 gTotalLen=$(printf "%llu" $((end_dec-start_dec)))
 gFileLines=$(wc -l ${gINFILE} |awk '{print $1}')
-decho "range: [${start_dec}-${end_dec}]: size=${gTotalLen}"
+decho "range: [${start_dec} to ${end_dec}]: total size=${gTotalLen}"
 } # end get_range_info()
 
 #---
