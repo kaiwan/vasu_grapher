@@ -139,10 +139,10 @@ IS_64_BIT=1
 which getconf >/dev/null || {
   echo "${name}: WARNING! getconf(1) missing, assuming 64-bit OS!"
 } && {
-  local bitw=$(getconf -a|grep -w LONG_BIT)
+  local bitw=$(getconf -a|grep -w LONG_BIT|awk '{print $2}')
   [ ${bitw} -eq 32 ] && IS_64_BIT=0  # implies 32-bit
 }
-#echo "64-bit? ${IS_64_BIT}"
+decho "64-bit OS? ${IS_64_BIT}"
 } # end get_range_info()
 
 #---
