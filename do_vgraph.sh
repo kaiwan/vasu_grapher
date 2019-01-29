@@ -349,7 +349,9 @@ proc_start()
 
  graphit
 
- printf "\n[==============--- End memory map PID %d (%s) ---===============]\n" $1 ${nm}
+ tput bold
+ printf "[===--- End memory map PID %d (%s), %d VMAs (segments) ---===]\n" $1 ${nm} ${gFileLines}
+ color_reset
 } # end proc_start()
 
 
