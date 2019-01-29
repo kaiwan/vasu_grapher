@@ -32,12 +32,13 @@
 # Then pass this script this file.
 #
 # TODO
-# - convert to reqd format
-# - check input file for correct format
-# - write to SVG !
-# - interactive GUI
+# [ ] convert to reqd format
+# [ ] check input file for correct format
+# [ ] show sparse regions of the VAS
+# [ ] write to SVG !
+# [ ] interactive GUI
 #
-# Last Updated : 28jan2019
+# Last Updated : 29jan2019
 # Created      : 26jul2017
 # 
 # Author:
@@ -60,7 +61,7 @@ gDELIM=","
 ########### Functions follow #######################
 
 #------------------------- d i s p ------------------------------------
-# eg. disp ${numspc} ${pa_name} ${pa_start_dec} ${pa_end_dec} ${sz}
+# eg. disp ${numspc} ${pa_name} ${pa_start_dec} ${pa_end_dec} ${seg_sz}
 # Params:
 #  $1 : left indentation length
 #  $2 : Region
@@ -306,7 +307,7 @@ local seg_sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
 #--- Populate the global array
 gArray[${gRow}]=${label}
 let gRow=gRow+1
-gArray[${gRow}]=${sz}
+gArray[${gRow}]=${seg_sz}
 let gRow=gRow+1
 gArray[${gRow}]=${int_start}
 let gRow=gRow+1
@@ -324,13 +325,14 @@ proc_start()
  local i=0
 
  #--- Header
+ tput bold
  printf "\n[==================---   V A S U _ G R A P H   ---=====================]\n"
  printf "Virtual Address Space Usermode (VASU) process GRAPHer (via /proc/$1/maps)\n"
  printf " https://github.com/kaiwan/vasu_grapher\n"
+ color_reset
  date
  local nm=$(head -n1 /proc/$1/comm)
  printf "\n[==============--- Start memory map PID %d (%s) ---===============]\n" $1 ${nm}
-# printf "<< Memory Map for process PID %d, best guess: %s >>\n\n" $1 "${nm}"
 
  # Redirect to stderr what we don't want in the log
  printf "\n%s: Processing, pl wait ...\n" "${name}" 1>&2
