@@ -174,37 +174,21 @@ LIMIT_SCALE_SZ=10
 graphit()
 {
 local i k
-local label sz num1 num2
-local scaled_sz_fp scaled_sz_int
+local label seg_sz num1 num2
 local szKB=0 szMB=0 szGB=0
 local         LIN="+------------------------------------------------------+"
 local ELLIPSE_LIN="~ .       .       .       .       .       .        .   ~"
 local BOX_RT_SIDE="|                                                      |"
 local oversized=0
 
-#decho "gRow=${gRow}" 
-#SCALE_FACTOR=$(((SCALE_FACTOR/gRow)*40))
-
-# TODO - test and tweak for various gRow sizes.
-# Best if we come up with a formula to calculate the scale factor.
-if [ ${gRow} -le 20 ] ; then
- SCALE_FACTOR=20
-elif [ ${gRow} -le 200 ] ; then
- SCALE_FACTOR=10000000
-elif [ ${gRow} -le 500 ] ; then
- SCALE_FACTOR=100000000
-fi
-
-decho "gRow=${gRow}:SCALE_FACTOR=${SCALE_FACTOR}:LIMIT_SCALE_SZ=${LIMIT_SCALE_SZ}:len=${gTotalLen}"
-
-# TODO / FIXME : soft-code, rm the '4'
-for ((i=0; i<${gRow}; i+=4))
+local DIM=4
+for ((i=0; i<${gRow}; i+=${DIM}))
 do
     #--- Retrieve values from the array
     label=${gArray[${i}]}  # col 1 [str: the label]
      #printf "%s: " "${gArray[${i}]}"
 	let k=i+1
-    sz=${gArray[${k}]}  # col 2 [int: the size]
+    seg_sz=${gArray[${k}]}  # col 2 [int: the size]
      #printf "%d\n" "${gArray[${k}]}"
 	let k=i+2
     num1=${gArray[${k}]}  # col 3 [int: the first number]
@@ -213,17 +197,7 @@ do
     num2=${gArray[${k}]}  # col 4 [int: the second number]
      #printf "%d\n" "${gArray[${k}]}"
 
-    scaled_sz_fp=$(bc <<< "scale=12; ${sz}/${gTotalLen}*100*${SCALE_FACTOR}")
-	
-	#[ ${scaled_sz_fp} -lt 1 ] && scaled_sz_fp=1
-    # Convert fp to int
-    if (( $(echo "${scaled_sz_fp} < 1" |bc -l) )); then
-	scaled_sz_int=1
-    else
-	scaled_sz_int=$(LC_ALL=C printf "%.0f" "${scaled_sz_fp}")
-    fi
-
-    szKB=$((${sz}/1024))
+    szKB=$((${seg_sz}/1024))
     [ ${szKB} -ge 1024 ] && szMB=$(bc <<< "scale=2; ${szKB}/1024.0") || szMB=0
     # !EMB: if we try and use simple bash arithmetic comparison, we get a 
     # "integer expression expected" err; hence, use bc:
@@ -231,15 +205,7 @@ do
     if (( $(echo "${szMB} > 1024" |bc -l) )); then
       szGB=$(bc <<< "scale=2; ${szMB}/1024.0")
     fi
-#    [ ${szKB} -ge 1024 ] && szMB=$((szKB/1024)) || szMB=0
-#    [ ${szMB} -ge 1024 ] && szGB=$((szMB/1024)) || szGB=0
 
-    [ 0 -eq 1 ] && {
-	fg_cyan
-	printf " {%.9f %d} " ${scaled_sz_fp} ${scaled_sz_int}
-	color_reset
-    }
-	
     #--- Drawing :-p  !
     #fg_blue
     printf "%s %x\n" "${LIN}" "0x${num1}"
@@ -253,13 +219,43 @@ do
     color_reset
     printf "]\n"
 
+    #--- NEW CALC for SCALING
+    # Simplify: We base the 'height' of each segment on the number of digits
+    # in the segment size (in bytes)!
+    segscale=${#seg_sz}    # strlen(seg_sz)
+    [ ${segscale} -lt 4 ] && {   # min seg size is 4096 bytes
+        echo "${name}: fatal error, segscale (# digits) <= 3! Aborting..."
+	echo "Kindly report this as a bug, thanks!"
+	exit 1
+    }
+    decho "seg_sz = ${seg_sz} segscale=${segscale}"
+
+    local box_height=0
+    # for segscale range [1-4]
+    # i.e. from 1-4 digits, i.e., 0 to 9999 bytes (ie. ~ 0 to 9.8 KB, single line
+    if [ ${segscale} -ge 1 -a ${segscale} -le 4 ]; then
+	box_height=0
+    # for segscale range [5-7]
+    # i.e. for 5 digits, i.e., ~  10 KB to  99 KB, 1 line box
+    # i.e. for 6 digits, i.e., ~ 100 KB to 999 KB ~= 1 MB, 2 line box
+    # i.e. for 7 digits, i.e., ~ 1 MB to 9.9 MB, 3 line box
+    elif [ ${segscale} -ge 5 -a ${segscale} -le 7 ]; then
+	let box_height=segscale-4
+    else
+    # for segscale >= 8 digits
+    # i.e. for 8 digits, i.e., from ~ 10 MB onwards, show an oversized ellipse box
+	box_height=10
+    fi
+    #---
+
     # draw the sides of the 'box'
-    [ ${scaled_sz_int} -gt ${LIMIT_SCALE_SZ} ] && {
-   	scaled_sz_int=${LIMIT_SCALE_SZ}
+    [ ${box_height} -ge ${LIMIT_SCALE_SZ} ] && {
+   	box_height=${LIMIT_SCALE_SZ}
    	oversized=1
     }
-    let scaled_sz_int=scaled_sz_int-1  # no box side for single-line
-    for ((x=1; x<${scaled_sz_int}; x++))
+
+    decho "box_height = ${box_height} oversized=${oversized}"
+    for ((x=1; x<${box_height}; x++))
     do
    	printf "%s\n" "${BOX_RT_SIDE}"
    	if [ ${oversized} -eq 1 ] ; then
@@ -303,7 +299,7 @@ local end_dec=$(printf "%llu" 0x${int_end})
 #numspc=$(grep -o " " <<< ${pa_start} |wc -l)
  # ltrim: now get rid of the leading spaces
 
-local sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
+local seg_sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
 
 #--- Populate the global array
 gArray[${gRow}]=${label}
