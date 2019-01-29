@@ -53,7 +53,7 @@ source ./common.sh || {
 
 ########### Globals follow #########################
 export PHYADDR_HEX=1
-export EMB=1  # simpler [no float point, etc]
+export EMB=0  # simpler [no float point, etc]
 DEBUG=0
 gDELIM=","
 
@@ -320,13 +320,6 @@ let gRow=gRow+1
 #--------------------------- p r o c _ s t a r t -----------------------
 proc_start()
 {
- [ ${EMB} -eq 0 ] && {
-   which bc >/dev/null || {
-     echo "${name}: bc package missing, pl install. Aborting..."
-     exit 1
-   }
- }
-
  prep_file
  get_range_info
  export IFS=$'\n'
@@ -362,9 +355,11 @@ proc_start()
 
 ##### 'main' : execution starts here #####
 
-which bc >/dev/null || {
-  echo "${name}: 'bc' utility missing, pl install and retry. Aborting..."
-  exit 1
+[ ${EMB} -eq 0 ] && {
+   which bc >/dev/null || {
+     echo "${name}: bc(1) package missing, pl install. Aborting..."
+     exit 1
+   }
 }
 
 [ $# -ne 2 ] && {
