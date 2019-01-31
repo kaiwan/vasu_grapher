@@ -294,9 +294,9 @@ done
 } # end graphit()
 
 #------------------ i n t e r p r e t _ r e c -------------------------
-# Interpret a record: a 'line' from the input stream:
+# Interpret a record: a CSV 'line' from the input stream:
 # Format:
-#  num1,num2,label
+#  start_uva,start_uva,segment_name   ; uva = user virtual address
 # eg.
 #  7f3390031000,7f3390053000,/lib/x86_64-linux-gnu/libc-2.28.so
 # This above string will be passed as the parameter to this function.
@@ -304,32 +304,30 @@ done
 interpret_rec()
 {
 #echo "num=$# p=$@"
-local int_start=$(echo "${@}" |cut -d"${gDELIM}" -f1)
-local int_end=$(echo "${@}" |cut -d"${gDELIM}" -f2)
+local start_uva=$(echo "${@}" |cut -d"${gDELIM}" -f1)
+local end_uva=$(echo "${@}" |cut -d"${gDELIM}" -f2)
+
+#decho "start_uva  = ${start_uva}"
 
 # Skip comment lines
-echo "${int_start}" | grep -q "^#" && return
+echo "${start_uva}" | grep -q "^#" && return
 
-local label=$(echo "${@}" |cut -d"${gDELIM}" -f3)
-[ -z "${label}" ] && label=" [-unnamed-] "
+local segment=$(echo "${@}" |cut -d"${gDELIM}" -f3)
+[ -z "${segment}" ] && segment=" [-unnamed-] "
 
 # Convert hex to dec
-local start_dec=$(printf "%llu" 0x${int_start})
-local end_dec=$(printf "%llu" 0x${int_end})
-
-#numspc=$(grep -o " " <<< ${pa_start} |wc -l)
- # ltrim: now get rid of the leading spaces
-
+local start_dec=$(printf "%llu" 0x${start_uva})
+local end_dec=$(printf "%llu" 0x${end_uva})
 local seg_sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
 
 #--- Populate the global array
-gArray[${gRow}]=${label}
+gArray[${gRow}]=${segment}
 let gRow=gRow+1
 gArray[${gRow}]=${seg_sz}
 let gRow=gRow+1
-gArray[${gRow}]=${int_start}
+gArray[${gRow}]=${start_uva}
 let gRow=gRow+1
-gArray[${gRow}]=${int_end}
+gArray[${gRow}]=${end_uva}
 let gRow=gRow+1
 
 } # end interpret_rec()
