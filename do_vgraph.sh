@@ -4,8 +4,8 @@
 #
 # Quick Description:
 # Don't invoke this directly, run the 'vasu_grapher' wrapper instead.
-# Support script for the vasu_grapher project; really, it's where the stuff
-# actually happens :)
+# do_vgraph.sh: Support script for the vasu_grapher project; really, it's
+# where the stuff actually happens :)
 # "Draw" out, (somewhat) to scale, ranges of numbers in a vertically tiled 
 # format. For eg.: the output of /proc/iomem, /proc/vmalloc, 
 # /proc/<.pid>/maps, etc etc
@@ -24,15 +24,13 @@
 # field2: integer value (often an address of some sort)
 # field3: string: descriptive
 #
-# You must generate the file. For eg.
-# you can do:
-# awk '{print $1, $6}' /proc/self/maps
-# -to get the output of the 'maps' file as 3 columns. Now you must of course
-# change the delimiter to a comma ',' (CSV) (could use sed for this). 
-# Then pass this script this file.
+# Our prep_mapsfile.sh script is invoked via the vasu_grapher wrapper to do
+# precisely this.
 #
 # TODO
 # [+] show Null trap vpage 0
+# [+] separate config file
+#     - move config vars to a config file for user convenience
 # [ ] convert to reqd format
 # [ ] Validation: check input file for correct format
 # [+] show sparse regions of the VAS
@@ -40,6 +38,10 @@
 #     [ ] # VMAs, # sparse regions
 #     [ ] space taken by valid regions & by sparse (%age as well of total)
 #     [ ] space taken by text, data, libs, stacks, ... regions (with %age)
+# [.] Segment Attributes
+#     [.] seg size
+#         [ ] RSS   [ ] PSS  [ ] Swap  [ ] Locked (?)    [use smaps!]
+#     [ ] seg permissions
 # [ ] Graphical stuff-
 #     [ ] write to SVG !
 #     [ ] interactive GUI
@@ -50,6 +52,7 @@
 # Author:
 # Kaiwan N Billimoria
 # kaiwan -at- kaiwantech -dot- com
+# kaiwan -dot- billimoria -at- gmail -dot- com
 # kaiwanTECH
 # License: MIT.
 name=$(basename $0)
@@ -57,14 +60,10 @@ source ./common.sh || {
  echo "${name}: fatal: could not source common.sh , aborting..."
  exit 1
 }
-
-# TODO - move config vars to a config file for user convenience
-
-########### Globals follow #########################
-export EMB=0  # simpler [no float point, etc]
-DEBUG=0
-gDELIM=","
-PAGE_SIZE=4096
+source ./config || {
+ echo "${name}: fatal: could not source configuration in file 'config', aborting..."
+ exit 1
+}
 
 ########### Functions follow #######################
 
@@ -139,10 +138,11 @@ do
 done
 } # end showArray()
 
-SCALE_FACTOR=100000000 #20 #200
 LIMIT_SCALE_SZ=10
 
 #---------------------- g r a p h i t ---------------------------------
+# Iterates over the global '4d' array gArr[] 'drawing' the vgraph.
+# Data driven tech!
 graphit()
 {
 local i k
@@ -264,12 +264,10 @@ done
 # Populate the global '4d' array gArray.
 interpret_rec()
 {
-local gap=0
 #echo "num=$# p=$@"
+local gap=0
 local start_uva=$(echo "${1}" |cut -d"${gDELIM}" -f1)
 local end_uva=$(echo "${1}" |cut -d"${gDELIM}" -f2)
-
-#decho "start_uva  = ${start_uva}"
 
 # Skip comment lines
 echo "${start_uva}" | grep -q "^#" && return
@@ -288,7 +286,6 @@ local seg_sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
 #        segnm,  segsz,start-uva,end-uva
 
 # Show null trap, vpage 0
-NULL_TRAP_SHOW=1
 if [ ${NULL_TRAP_SHOW} -eq 1 -a $2 -eq 0 ]; then
   gArray[${gRow}]="[ NULL trap ]"
   let gRow=gRow+1
@@ -301,7 +298,6 @@ if [ ${NULL_TRAP_SHOW} -eq 1 -a $2 -eq 0 ]; then
 fi
 
 #------------ Sparse Detection
-SPARSE_SHOW=1
 if [ ${SPARSE_SHOW} -eq 1 ]; then
 
 DetectedSparse=0
