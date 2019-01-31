@@ -55,61 +55,11 @@ source ./common.sh || {
 # TODO - move config vars to a config file for user convenience
 
 ########### Globals follow #########################
-export PHYADDR_HEX=1
 export EMB=0  # simpler [no float point, etc]
 DEBUG=0
 gDELIM=","
 
 ########### Functions follow #######################
-
-#------------------------- d i s p ------------------------------------
-# eg. disp ${numspc} ${pa_name} ${pa_start_dec} ${pa_end_dec} ${seg_sz}
-# Params:
-#  $1 : left indentation length
-#  $2 : Region
-#  $3 : start phy addr
-#  $4 : end phy addr
-#  $5 : size of region in bytes
-disp()
-{
-local sp=$(($1+1))
-local fmtname=$((30-${sp}))
-local szKB=$(($5/1024))
-local szMB=0
-local szGB=0
-
-[ ${PHYADDR_HEX} -eq 0 ] && {
-  printf "%${sp}s%-${fmtname}s:%16d   %16d [%9d" \
-		" " "${2}" "${3}" "${4}" ${szKB}
-} || {
-  printf "%${sp}s%-${fmtname}s:%16lx   %16lx [%9d" \
-		" " "${2}" "${3}" "${4}" ${szKB}
-}
-
-# Calculate sizes in MB and GB if required
-[ ${EMB} -eq 0 ] && {
-  [ ${szKB} -ge 1024 ] && szMB=$(bc <<< "scale=2; ${szKB}/1024.0")
-  # !EMB: if we try and use simple bash arithmetic comparison, we get a 
-  # "integer expression expected" err; hence, use bc:
-  if (( $(echo "${szMB} > 1024" |bc -l) )); then
-    szGB=$(bc <<< "scale=2; ${szMB}/1024.0")
-  fi
-
-  if (( $(echo "${szMB} > 0" |bc -l) )); then
-    printf "  %6.2f" ${szMB}
-  fi
-  if (( $(echo "${szGB} > 0" |bc -l) )); then
-    printf "  %4.2f" ${szGB}
-  fi
-} || {  # embedded sys: simpler
-  [ ${szKB} -ge 1024 ] && szMB=$((${szKB}/1024))
-  [ ${szMB} -ge 1024 ] && szGB=$((${szMB}/1024))
-  [ ${szMB} -gt 0 ] && printf "  %6d" ${szMB}
-  [ ${szGB} -gt 0 ] && printf "  %4d" ${szGB}
-}
-
-printf "]\n"
-} # end disp()
 
 #-------------------- p r e p _ f i l e -------------------------------
 prep_file()
