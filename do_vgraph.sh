@@ -35,7 +35,7 @@
 # [ ] Validation: check input file for correct format
 # [.] Statistics
 #     [+] # VMAs, # sparse regions
-#     [ ] space taken by valid regions & by sparse (%age as well of total)
+#     [+] space taken by valid regions & by sparse (%age as well of total)
 #     [ ] space taken by text, data, libs, stacks, ... regions (with %age)
 # [.] Segment Attributes
 #     [.] seg size
@@ -89,7 +89,7 @@ local int_end=$(tail -n2 ${gINFILE} |head -n1 |cut -d"${gDELIM}" -f2 |sed 's/ //
 local start_dec=$(printf "%llu" 0x${int_start})   #$(echo $((16#${int_start})))
 local end_dec=$(printf "%llu" 0x${int_end})
 gTotalLen=$(printf "%llu" $((end_dec-start_dec)))
-gFileLines=$(wc -l ${gINFILE} |awk '{print $1}')
+gFileLines=$(wc -l ${gINFILE} |awk '{print $1}')  # = # of VMAs
 decho "range: [${start_dec} to ${end_dec}]: total size=${gTotalLen}"
 
 # 32 or 64 bit OS?
@@ -253,6 +253,8 @@ done
 } # end graphit()
 
 gNumSparse=0
+gTotalSparseSize=0
+gTotalSegSize=0
 
 #------------------ i n t e r p r e t _ r e c -------------------------
 # Interpret a record: a CSV 'line' from the input stream:
@@ -288,8 +290,9 @@ local seg_sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
 #        segnm,  segsz,start-uva,end-uva
 
 # Show null trap, vpage 0
+NULLTRAP_STR="[ NULL trap ]"
 if [ ${NULL_TRAP_SHOW} -eq 1 -a $2 -eq 0 ]; then
-  gArray[${gRow}]="[ NULL trap ]"
+  gArray[${gRow}]="${NULLTRAP_STR}"
   let gRow=gRow+1
   gArray[${gRow}]=${PAGE_SIZE}
   let gRow=gRow+1
@@ -353,7 +356,11 @@ fi
     gArray[${gRow}]=$(printf "%x" $((0x${start_uva} - 0x1000)))
     let gRow=gRow+1
 
-    let gNumSparse=gNumSparse+1
+    # Stats
+    [ ${STATS_SHOW} -eq 1 ] && {
+      let gNumSparse=gNumSparse+1
+      let gTotalSparseSize=gTotalSparseSize+gap
+    }
 }
 prevseg_end_uva=${end_dec}
 fi
@@ -369,11 +376,57 @@ let gRow=gRow+1
 gArray[${gRow}]=${end_uva}
 let gRow=gRow+1
 
+[ ${STATS_SHOW} -eq 1 ] && {
+  let gTotalSegSize=${gTotalSegSize}+${seg_sz}
+  # does NOT include the null trap; that's correct
+}
 } # end interpret_rec()
+
+# Display the number passed.
+# As appropriate, also in KB, MB, GB, TB.
+# $1 : the (large) number to display
+# $2 : the total space size 'out of' (for percentage calculation)
+#    percent = ($1/$2)*100
+# $3 : the message string
+largenum_display()
+{
+ local szKB=0 szMB=0 szGB=0 szTB=0
+
+     # !EMB: if we try and use simple bash arithmetic comparison, we get a 
+     # "integer expression expected" err; hence, use bc(1):
+     [ ${1} -ge 1024 ] && szKB=$(bc <<< "scale=6; ${1}/1024.0") || szKB=0
+     #[ ${szKB} -ge 1024 ] && szMB=$(bc <<< "scale=6; ${szKB}/1024.0") || szMB=0
+     if (( $(echo "${szKB} > 1024" |bc -l) )); then
+       szMB=$(bc <<< "scale=6; ${szKB}/1024.0")
+     fi
+     if (( $(echo "${szMB} > 1024" |bc -l) )); then
+       szGB=$(bc <<< "scale=6; ${szMB}/1024.0")
+     fi
+     if (( $(echo "${szGB} > 1024" |bc -l) )); then
+       szTB=$(bc <<< "scale=6; ${szGB}/1024.0")
+     fi
+
+     printf " $3 %llu bytes = %9.6f KB" ${1} ${szKB}
+     if (( $(echo "${szKB} > 1024" |bc -l) )); then
+       printf " = %9.6f MB" ${szMB}
+       if (( $(echo "${szMB} > 1024" |bc -l) )); then
+         printf " =  %9.6f GB" ${szGB}
+       fi
+       if (( $(echo "${szGB} > 1024" |bc -l) )); then
+         printf " =  %9.6f TB" ${szTB}
+       fi
+     fi
+
+     #local pcntg=$(bc <<< "scale=12; (${1}/(128.0*1024*1024*1024*1024))*100.0")
+     local pcntg=$(bc <<< "scale=12; (${1}/${2})*100.0")
+     printf "\n  i.e. %2.6f%%" ${pcntg}
+}
 
 #--------------------------- p r o c _ s t a r t -----------------------
 proc_start()
 {
+ local szKB szMB szGB
+
  prep_file
  get_range_info
  export IFS=$'\n'
@@ -405,6 +458,8 @@ proc_start()
 #showArray
 graphit
 
+TB_128=$(bc <<< "scale=6; 128.0*1024.0*1024.0*1024.0*1024.0")
+
  #--- Footer
  tput bold
  printf "[===--- End memory map PID %d (%s) ---===]\n" $1 ${nm}
@@ -412,10 +467,16 @@ graphit
    # Paranoia
    local numvmas=$(wc -l /proc/$1/maps |awk '{print $1}')
    [ ${gFileLines} -ne ${numvmas} ] && printf " [!] Warning! # VMAs does not match /proc/$1/maps\n"
-   printf "Stats: %d VMAs (segments)" ${gFileLines}
-   [ ${SPARSE_SHOW} -eq 1 ] && printf ", %d sparse regions" ${gNumSparse}
+   printf "Stats:\n %d VMAs (segments)" ${gFileLines}
+   [ ${SPARSE_SHOW} -eq 1 ] && {
+     printf ", %d sparse regions\n" ${gNumSparse}
+     largenum_display ${gTotalSparseSize} ${TB_128} "Total space that is Sparse :"
+   } # sparse show
+
+   # Valid regions (segments) total size
+   largenum_display ${gTotalSegSize} ${TB_128} "\n Total space that is valid memory (segments) :"
    printf "\n"
- }
+ } # stats show
  color_reset
 } # end proc_start()
 
