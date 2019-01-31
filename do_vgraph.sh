@@ -34,11 +34,11 @@
 # TODO
 # [ ] convert to reqd format
 # [ ] check input file for correct format
-# [ ] show sparse regions of the VAS
+# [+] show sparse regions of the VAS
 # [ ] write to SVG !
 # [ ] interactive GUI
 #
-# Last Updated : 29jan2019
+# Last Updated : 31jan2019
 # Created      : 26jul2017
 # 
 # Author:
@@ -51,6 +51,8 @@ source ./common.sh || {
  echo "${name}: fatal: could not source common.sh , aborting..."
  exit 1
 }
+
+# TODO - move config vars to a config file for user convenience
 
 ########### Globals follow #########################
 export PHYADDR_HEX=1
@@ -299,26 +301,90 @@ done
 #  start_uva,start_uva,segment_name   ; uva = user virtual address
 # eg.
 #  7f3390031000,7f3390053000,/lib/x86_64-linux-gnu/libc-2.28.so
-# This above string will be passed as the parameter to this function.
+# Parameters:
+#  $1 : the above CSV format string tuple {start_uva,end_uva, segname}
+#  $2 : loop index
 # Populate the global '4d' array gArray.
 interpret_rec()
 {
+local gap=0
 #echo "num=$# p=$@"
-local start_uva=$(echo "${@}" |cut -d"${gDELIM}" -f1)
-local end_uva=$(echo "${@}" |cut -d"${gDELIM}" -f2)
+local start_uva=$(echo "${1}" |cut -d"${gDELIM}" -f1)
+local end_uva=$(echo "${1}" |cut -d"${gDELIM}" -f2)
 
 #decho "start_uva  = ${start_uva}"
 
 # Skip comment lines
 echo "${start_uva}" | grep -q "^#" && return
 
-local segment=$(echo "${@}" |cut -d"${gDELIM}" -f3)
+local segment=$(echo "${1}" |cut -d"${gDELIM}" -f3)
 [ -z "${segment}" ] && segment=" [-unnamed-] "
 
 # Convert hex to dec
 local start_dec=$(printf "%llu" 0x${start_uva})
 local end_dec=$(printf "%llu" 0x${end_uva})
 local seg_sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
+
+# The global 4d-array's format is:
+#          col0   col1   col2   col3
+# row'n' [label],[size],[num1],[num2]
+#        segnm,  segsz,start-uva,end-uva
+
+# TODO - show null trap, vpage 0
+
+#------------ Sparse Detection
+SPARSE_SHOW=1
+if [ ${SPARSE_SHOW} -eq 1 ]; then
+
+DetectedSparse=0
+PAGE_SIZE=4096
+SPARSE_ENTRY="<< ... Sparse Region ... >>"
+
+[ $2 -eq 0 ] && prevseg_end_uva=${PAGE_SIZE}
+
+# Detect sparse region, and if present, insert into the gArr[].
+# Sparse region detected by condition:
+#  gap = this-segment-start - prev-segment-end > 1 page
+if [ $2 -eq 0 ] ; then   # first segment in the process
+  [ ${start_dec} -gt 0 ] && {
+    gap=${start_dec}
+    DetectedSparse=1
+  }
+else
+  decho "start_dec=${start_dec} prevseg_end_uva=${prevseg_end_uva}"
+  #printf "%x  %x\n" ${start_dec} ${prevseg_end_uva}
+  gap=$((${start_dec} - ${prevseg_end_uva}))
+  [ ${gap} -gt ${PAGE_SIZE} ] && {
+    decho "gap = ${gap}"
+    DetectedSparse=1
+  }
+fi
+
+[ ${DetectedSparse} -eq 1 ] && {
+    # name / label
+    gArray[${gRow}]="${SPARSE_ENTRY}"
+    let gRow=gRow+1
+
+    # segment size (bytes)
+    gArray[${gRow}]=${gap}
+    let gRow=gRow+1
+
+    # start uva
+    [ $2 -eq 0 ] && gArray[${gRow}]=0 || {
+      local prevseg_end_uva_hex=$(printf "%x" ${prevseg_end_uva})
+      gArray[${gRow}]=${prevseg_end_uva_hex}
+      #gArray[${gRow}]=$(printf "%x" $((0x${prevseg_end_uva_hex} + 0x1000)))
+    }
+    let gRow=gRow+1
+
+    # end uva
+    # the end addr is 1 page (0x1000) before the next one
+    gArray[${gRow}]=$(printf "%x" $((0x${start_uva} - 0x1000)))
+    let gRow=gRow+1
+}
+prevseg_end_uva=${end_dec}
+fi
+#--------------
 
 #--- Populate the global array
 gArray[${gRow}]=${segment}
@@ -358,12 +424,13 @@ proc_start()
  for REC in $(cat ${gINFILE})
  do 
    #echo "REC: $REC"
-   interpret_rec ${REC}
+   interpret_rec ${REC} ${i}
    printf "=== %06d / %06d\r" ${i} ${gFileLines}
    let i=i+1
  done 1>&2
 
- graphit
+#showArray
+graphit
 
  tput bold
  printf "[===--- End memory map PID %d (%s), %d VMAs (segments) ---===]\n" $1 ${nm} ${gFileLines}

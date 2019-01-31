@@ -26,10 +26,6 @@ sed --in-place 's/-/,/' ${TMPF}
 sed --in-place 's/ /,/' ${TMPF}
 # del comment lines
 sed --in-place '/^#/d' ${TMPF}
-# del the '[vsyscall]' line (as it makes the range far too large to
-# scale effectively), esp on a 64-bit system
-#sed --in-place '/\[vsyscall\]/d' ${TMPF}
-
 cp ${TMPF} ${outfile}
 rm -f ${TMPF}
 }
