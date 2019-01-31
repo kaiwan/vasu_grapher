@@ -32,11 +32,17 @@
 # Then pass this script this file.
 #
 # TODO
+# [+] show Null trap vpage 0
 # [ ] convert to reqd format
-# [ ] check input file for correct format
+# [ ] Validation: check input file for correct format
 # [+] show sparse regions of the VAS
-# [ ] write to SVG !
-# [ ] interactive GUI
+# [ ] Statistics
+#     [ ] # VMAs, # sparse regions
+#     [ ] space taken by valid regions & by sparse (%age as well of total)
+#     [ ] space taken by text, data, libs, stacks, ... regions (with %age)
+# [ ] Graphical stuff-
+#     [ ] write to SVG !
+#     [ ] interactive GUI
 #
 # Last Updated : 31jan2019
 # Created      : 26jul2017
@@ -58,6 +64,7 @@ source ./common.sh || {
 export EMB=0  # simpler [no float point, etc]
 DEBUG=0
 gDELIM=","
+PAGE_SIZE=4096
 
 ########### Functions follow #######################
 
@@ -280,14 +287,24 @@ local seg_sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
 # row'n' [label],[size],[num1],[num2]
 #        segnm,  segsz,start-uva,end-uva
 
-# TODO - show null trap, vpage 0
+# Show null trap, vpage 0
+NULL_TRAP_SHOW=1
+if [ ${NULL_TRAP_SHOW} -eq 1 -a $2 -eq 0 ]; then
+  gArray[${gRow}]="[ NULL trap ]"
+  let gRow=gRow+1
+  gArray[${gRow}]=${PAGE_SIZE}
+  let gRow=gRow+1
+  gArray[${gRow}]=0
+  let gRow=gRow+1
+  gArray[${gRow}]=$(printf "%x" ${PAGE_SIZE})
+  let gRow=gRow+1
+fi
 
 #------------ Sparse Detection
 SPARSE_SHOW=1
 if [ ${SPARSE_SHOW} -eq 1 ]; then
 
 DetectedSparse=0
-PAGE_SIZE=4096
 SPARSE_ENTRY="<< ... Sparse Region ... >>"
 
 [ $2 -eq 0 ] && prevseg_end_uva=${PAGE_SIZE}
@@ -316,15 +333,21 @@ fi
     let gRow=gRow+1
 
     # segment size (bytes)
-    gArray[${gRow}]=${gap}
+    [ ${NULL_TRAP_SHOW} -eq 0 ] && {
+      gArray[${gRow}]=${gap}
+    } || {
+      let gap=$gap-$PAGE_SIZE
+      gArray[${gRow}]=${gap}
+    }
     let gRow=gRow+1
 
     # start uva
-    [ $2 -eq 0 ] && gArray[${gRow}]=0 || {
+    if [ $2 -eq 0 ]; then  # first entry
+      [ ${NULL_TRAP_SHOW} -eq 0 ] && gArray[${gRow}]=0 || gArray[${gRow}]=1000
+    else
       local prevseg_end_uva_hex=$(printf "%x" ${prevseg_end_uva})
       gArray[${gRow}]=${prevseg_end_uva_hex}
-      #gArray[${gRow}]=$(printf "%x" $((0x${prevseg_end_uva_hex} + 0x1000)))
-    }
+    fi
     let gRow=gRow+1
 
     # end uva
