@@ -29,13 +29,12 @@
 #
 # TODO
 # [+] show Null trap vpage 0
+# [+] show sparse regions of the VAS
 # [+] separate config file
 #     - move config vars to a config file for user convenience
-# [ ] convert to reqd format
 # [ ] Validation: check input file for correct format
-# [+] show sparse regions of the VAS
-# [ ] Statistics
-#     [ ] # VMAs, # sparse regions
+# [.] Statistics
+#     [+] # VMAs, # sparse regions
 #     [ ] space taken by valid regions & by sparse (%age as well of total)
 #     [ ] space taken by text, data, libs, stacks, ... regions (with %age)
 # [.] Segment Attributes
@@ -43,6 +42,7 @@
 #         [ ] RSS   [ ] PSS  [ ] Swap  [ ] Locked (?)    [use smaps!]
 #     [ ] seg permissions
 # [ ] Graphical stuff-
+#  convert to reqd format
 #     [ ] write to SVG !
 #     [ ] interactive GUI
 #
@@ -252,6 +252,8 @@ done
 }
 } # end graphit()
 
+gNumSparse=0
+
 #------------------ i n t e r p r e t _ r e c -------------------------
 # Interpret a record: a CSV 'line' from the input stream:
 # Format:
@@ -350,6 +352,8 @@ fi
     # the end addr is 1 page (0x1000) before the next one
     gArray[${gRow}]=$(printf "%x" $((0x${start_uva} - 0x1000)))
     let gRow=gRow+1
+
+    let gNumSparse=gNumSparse+1
 }
 prevseg_end_uva=${end_dec}
 fi
@@ -401,8 +405,17 @@ proc_start()
 #showArray
 graphit
 
+ #--- Footer
  tput bold
- printf "[===--- End memory map PID %d (%s), %d VMAs (segments) ---===]\n" $1 ${nm} ${gFileLines}
+ printf "[===--- End memory map PID %d (%s) ---===]\n" $1 ${nm}
+ [ ${STATS_SHOW} -eq 1 ] && {
+   # Paranoia
+   local numvmas=$(wc -l /proc/$1/maps |awk '{print $1}')
+   [ ${gFileLines} -ne ${numvmas} ] && printf " [!] Warning! # VMAs does not match /proc/$1/maps\n"
+   printf "Stats: %d VMAs (segments)" ${gFileLines}
+   [ ${SPARSE_SHOW} -eq 1 ] && printf ", %d sparse regions" ${gNumSparse}
+   printf "\n"
+ }
  color_reset
 } # end proc_start()
 
