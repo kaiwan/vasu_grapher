@@ -466,6 +466,7 @@ graphit
 
 GB_2=$(bc <<< "scale=6; 2.0*1024.0*1024.0*1024.0")
 GB_3=$(bc <<< "scale=6; 3.0*1024.0*1024.0*1024.0")
+GB_4=$(bc <<< "scale=6; 4.0*1024.0*1024.0*1024.0")
 TB_128=$(bc <<< "scale=6; 128.0*1024.0*1024.0*1024.0*1024.0")
 
  #--- Footer
@@ -480,17 +481,17 @@ TB_128=$(bc <<< "scale=6; 128.0*1024.0*1024.0*1024.0*1024.0")
    [ ${SPARSE_SHOW} -eq 1 ] && {
      printf ", %d sparse regions\n" ${gNumSparse}
      if [ ${IS_64_BIT} -eq 1 ]; then
-      largenum_display ${gTotalSparseSize} ${TB_128} "Total space that is Sparse :"
+      largenum_display ${gTotalSparseSize} ${TB_128} "Total address space that is Sparse :"
      else
-      largenum_display ${gTotalSparseSize} ${GB_2} "Total space that is Sparse :"
+      largenum_display ${gTotalSparseSize} ${GB_4} "Total address space that is Sparse :"
      fi
    } # sparse show
 
    # Valid regions (segments) total size
    if [ ${IS_64_BIT} -eq 1 ]; then
-    largenum_display ${gTotalSegSize} ${TB_128} "\n Total space that is valid memory (segments) :"
+    largenum_display ${gTotalSegSize} ${TB_128} "\n Total address space that is valid memory (segments) :"
    else
-    largenum_display ${gTotalSegSize} ${GB_2} "\n Total space that is valid memory (segments) :"
+    largenum_display ${gTotalSegSize} ${GB_4} "\n Total address space that is valid memory (segments) :"
    fi
    printf "\n=======\n"
  } # stats show
