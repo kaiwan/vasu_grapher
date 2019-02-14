@@ -41,6 +41,11 @@
 #     [.] seg size
 #         [ ] RSS   [ ] PSS  [ ] Swap  [ ] Locked (?)    [use smaps!]
 #     [ ] seg permissions
+# [ ] Kernel Segment details !   (requires root)
+# [ ] Reverse order: high-to-low address
+#
+# [ ] -h: horzontal render of process VAS
+#     [ ] horizontal scrolling w/ less(1)?
 # [ ] Graphical stuff-
 #  convert to reqd format
 #     [ ] write to SVG !
@@ -330,6 +335,7 @@ fi
 
 [ ${DetectedSparse} -eq 1 ] && {
     # name / label
+    # TODO : the very last 'sparse' area is actually the kernel segment
     gArray[${gRow}]="${SPARSE_ENTRY}"
     let gRow=gRow+1
 
@@ -382,7 +388,7 @@ let gRow=gRow+1
 }
 } # end interpret_rec()
 
-# Display the number passed.
+# Display the number passed in a himan-readable fashion
 # As appropriate, also in KB, MB, GB, TB.
 # $1 : the (large) number to display
 # $2 : the total space size 'out of' (for percentage calculation)
@@ -458,26 +464,36 @@ proc_start()
 #showArray
 graphit
 
+GB_2=$(bc <<< "scale=6; 2.0*1024.0*1024.0*1024.0")
+GB_3=$(bc <<< "scale=6; 3.0*1024.0*1024.0*1024.0")
 TB_128=$(bc <<< "scale=6; 128.0*1024.0*1024.0*1024.0*1024.0")
 
  #--- Footer
  tput bold
  printf "[===--- End memory map PID %d (%s) ---===]\n" $1 ${nm}
+ color_reset
  [ ${STATS_SHOW} -eq 1 ] && {
    # Paranoia
-   local numvmas=$(wc -l /proc/$1/maps |awk '{print $1}')
+   local numvmas=$(sudo wc -l /proc/$1/maps |awk '{print $1}')
    [ ${gFileLines} -ne ${numvmas} ] && printf " [!] Warning! # VMAs does not match /proc/$1/maps\n"
-   printf "Stats:\n %d VMAs (segments)" ${gFileLines}
+   printf "=== Statistics: ===\n %d VMAs (segments)" ${gFileLines}
    [ ${SPARSE_SHOW} -eq 1 ] && {
      printf ", %d sparse regions\n" ${gNumSparse}
-     largenum_display ${gTotalSparseSize} ${TB_128} "Total space that is Sparse :"
+     if [ ${IS_64_BIT} -eq 1 ]; then
+      largenum_display ${gTotalSparseSize} ${TB_128} "Total space that is Sparse :"
+     else
+      largenum_display ${gTotalSparseSize} ${GB_2} "Total space that is Sparse :"
+     fi
    } # sparse show
 
    # Valid regions (segments) total size
-   largenum_display ${gTotalSegSize} ${TB_128} "\n Total space that is valid memory (segments) :"
-   printf "\n"
+   if [ ${IS_64_BIT} -eq 1 ]; then
+    largenum_display ${gTotalSegSize} ${TB_128} "\n Total space that is valid memory (segments) :"
+   else
+    largenum_display ${gTotalSegSize} ${GB_2} "\n Total space that is valid memory (segments) :"
+   fi
+   printf "\n=======\n"
  } # stats show
- color_reset
 } # end proc_start()
 
 
