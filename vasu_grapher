@@ -16,13 +16,14 @@ sed -i "s/\x1b.....//g" ${1}    # get rid of the ^[(B^[[m characters !
  echo "Usage: ${name} PID-of-process-to-map"
  exit 1
 }
- 
-[ ! -f ./do_vgraph.sh ] && {
- echo "${name}: do_vgraph.sh missing? Aborting..."
+
+PFX=$(dirname $(which $0))    # dir in which 'vasu_grapher' and tools reside
+[ ! -f ${PFX}/do_vgraph.sh ] && {
+ echo "${name}: ${PFX}/do_vgraph.sh missing? Aborting..."
  exit 1
 }
-[ ! -f ./prep_mapsfile.sh ] && {
- echo "${name}: prep_mapsfile.sh missing? Aborting..."
+[ ! -f ${PFX}/prep_mapsfile.sh ] && {
+ echo "${name}: ${PFX}/prep_mapsfile.sh missing? Aborting..."
  exit 1
 }
 # Check for process existence
@@ -34,11 +35,10 @@ sudo kill -0 $1 >/dev/null 2>&1 || {
 LOG=log_vasu.txt
 TMPCSV=/tmp/vgrph.csv
 
-./prep_mapsfile.sh $1 ${TMPCSV} || exit 1
-./do_vgraph.sh $1 ${TMPCSV} | tee -a ${LOG}
+${PFX}/prep_mapsfile.sh $1 ${TMPCSV} || exit 1
+${PFX}/do_vgraph.sh $1 ${TMPCSV} | tee -a ${LOG}
 rm -f ${TMPCSV}
 logfile_post_process ${LOG}
 echo "$(date): output logged (appended) here :"
 ls -lh ${LOG}
-
 exit 0

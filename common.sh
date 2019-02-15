@@ -19,13 +19,12 @@ export TOPDIR=$(pwd)
 ON=1
 OFF=0
 
-### UPDATE for your box
-#PFX=~/src-show-2.6k
-source ./err_common.sh || {
+PFX=$(dirname $(which $0))    # dir in which 'vasu_grapher' and tools reside
+source ${PFX}/err_common.sh || {
  echo "$name: could not source ${PFX}/err_common.sh, aborting..."
  exit 1
 }
-source ./color.sh || {
+source ${PFX}/color.sh || {
  echo "$name: could not source ${PFX}/color.sh, aborting..."
  exit 1
 }

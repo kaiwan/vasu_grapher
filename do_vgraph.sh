@@ -61,12 +61,13 @@
 # kaiwanTECH
 # License: MIT.
 name=$(basename $0)
-source ./common.sh || {
- echo "${name}: fatal: could not source common.sh , aborting..."
+PFX=$(dirname $(which $0))    # dir in which 'vasu_grapher' and tools reside
+source ${PFX}/common.sh || {
+ echo "${name}: fatal: could not source ${PFX}/common.sh , aborting..."
  exit 1
 }
-source ./config || {
- echo "${name}: fatal: could not source configuration in file 'config', aborting..."
+source ${PFX}/config || {
+ echo "${name}: fatal: could not source configuration in file '${PFX}/config', aborting..."
  exit 1
 }
 
