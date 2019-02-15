@@ -478,7 +478,10 @@ TB_128=$(bc <<< "scale=6; 128.0*1024.0*1024.0*1024.0*1024.0")
    # Paranoia
    local numvmas=$(sudo wc -l /proc/$1/maps |awk '{print $1}')
    [ ${gFileLines} -ne ${numvmas} ] && printf " [!] Warning! # VMAs does not match /proc/$1/maps\n"
-   printf "=== Statistics: ===\n %d VMAs (segments)" ${gFileLines}
+   [ ${NULL_TRAP_SHOW} -eq 1 ] && let numvmas=numvmas+1
+
+   printf "=== Statistics: ===\n %d VMAs (segments)" ${numvmas}
+   # TODO - assuming the split on 64-bit is 128T:128T and on 32-bit 2:2 GB; query it
    [ ${SPARSE_SHOW} -eq 1 ] && {
      printf ", %d sparse regions\n" ${gNumSparse}
      if [ ${IS_64_BIT} -eq 1 ]; then
