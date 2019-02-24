@@ -63,4 +63,9 @@ Tue Jan 29 18:25:08 IST 2019: output logged (appended) here :
 -rw-r--r-- 1 kai kai 458K Jan 29 18:25 log_vasu.txt
 $ 
 ```
-As a bonus, the output is logged - appended - to the file log_vasu.txt. Look up this log when done.
+Note-
+- As of now, we also show some statistics when done- the amt and percentage of memory in the total VAS that is just 'sparse' (empty; it's usually v high) vs the actually used memory amt and percentage.
+
+- Currently, at the end of the 'graph', the memory above the usermode addr space is shown as a 'sparse' region; i nreality, on 32-bit systems, this is the kernel VAS! ... and on 64-bit systems, this _is_ sparse space (huge), followed by the kernel VAS. I shall work on updating this as such..
+
+- As a bonus, the output is logged - appended - to the file log_vasu.txt. Look up this log when done.
