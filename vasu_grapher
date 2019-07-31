@@ -16,10 +16,13 @@ sed -i "s/\x1b.....//g" ${1}    # get rid of the ^[(B^[[m characters !
       # (the five .'s that follow specify this)
 }
 
-[ $# -ne 1 ] && {
- echo "Usage: ${name} PID-of-process-to-map"
+[ $# -lt 1 ] && {
+ echo "Usage: ${name} PID-of-process-to-map [-d:debug mode]"
  exit 1
 }
+DEBUG=0
+[ $# -eq 2 -a "$2" = "-d" ] && export DEBUG=1
+
 
 PFX=$(dirname $(which $0))    # dir in which 'vasu_grapher' and tools reside
 [ ! -f ${PFX}/do_vgraph.sh ] && {
@@ -45,7 +48,12 @@ LOG=log_vasu.txt
 TMPCSV=/tmp/vgrph.csv
 
 ${PFX}/prep_mapsfile.sh $1 ${TMPCSV} || exit 1
-${PFX}/do_vgraph.sh $1 ${TMPCSV} | tee -a ${LOG}
+[ ${DEBUG} -eq 1 ] && {
+  ${PFX}/do_vgraph.sh $1 ${TMPCSV} -d | tee -a ${LOG} 
+} || {
+  ${PFX}/do_vgraph.sh $1 ${TMPCSV} | tee -a ${LOG}
+}
+
 rm -f ${TMPCSV}
 logfile_post_process ${LOG}
 echo "$(date): output logged (appended) here :"
