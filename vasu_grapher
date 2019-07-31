@@ -1,8 +1,11 @@
 #!/bin/bash
 # vasu_grapher
+#
 # A simple Virtual Address Space - Usermode - Graphing
 # visualization utility
 # https://github.com/kaiwan/vasu_grapher.git
+#
+# Run this program; it invokes the other scripts as required.
 name=$(basename $0)
 
 logfile_post_process()
@@ -29,12 +32,12 @@ PFX=$(dirname $(which $0))    # dir in which 'vasu_grapher' and tools reside
 }
 # Check for process existence
 sudo kill -0 $1 >/dev/null 2>&1 || {
- echo "${name}: PID \"$1\" invalid (or dead now?) Aborting..."
+ echo "${name}: process with PID \"$1\" invalid (or dead now?) Aborting..."
  exit 1
 }
 # Verify it's not a kernel thread
 sudo readlink /proc/$1/exe >/dev/null || {
- echo "${name}: PID \"$1\" invalid; we believe it's a kernel thread. Aborting..."
+ echo "${name}: process with PID \"$1\" invalid; we believe it's a kernel thread. Aborting..."
  exit 1
 }
 

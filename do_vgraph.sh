@@ -11,7 +11,7 @@
 # /proc/<.pid>/maps, etc etc
 # 
 # We EXPECT as input a file; the file must be in CSV format with 3 columns;
-# col 1 and col 2 are ASSumed to be in hexadecimal.
+# col 1 and col 2 are ASSuMEd to be in hexadecimal.
 # (as of this very early ver at least). 
 # FORMAT ::
 #   [...]
@@ -128,11 +128,10 @@ gRow=0
 #-----------------------s h o w A r r a y -----------------------------
 showArray()
 {
-local i k
+local i k DIM=4
 echo
 decho "gRow = ${gRow}"
-# TODO / FIXME : soft-code, rm the '4'
-for ((i=0; i<${gRow}; i+=4))
+for ((i=0; i<${gRow}; i+=${DIM}))
 do
     printf "[%s, " "${gArray[${i}]}"
 	let k=i+1
@@ -269,12 +268,11 @@ gTotalSegSize=0
 # eg.
 #  7f3390031000,7f3390053000,/lib/x86_64-linux-gnu/libc-2.28.so
 # Parameters:
-#  $1 : the above CSV format string tuple {start_uva,end_uva, segname}
+#  $1 : the above CSV format string tuple {start_uva,end_uva,segname}
 #  $2 : loop index
 # Populate the global '4d' array gArray.
 interpret_rec()
 {
-#echo "num=$# p=$@"
 local gap=0
 local start_uva=$(echo "${1}" |cut -d"${gDELIM}" -f1)
 local end_uva=$(echo "${1}" |cut -d"${gDELIM}" -f2)
@@ -336,7 +334,7 @@ fi
 
 [ ${DetectedSparse} -eq 1 ] && {
     # name / label
-    # TODO : the very last 'sparse' area is actually the kernel segment
+    # TODO : on 32-bit, the very last 'sparse' area is actually the kernel segment
     gArray[${gRow}]="${SPARSE_ENTRY}"
     let gRow=gRow+1
 
@@ -389,7 +387,7 @@ let gRow=gRow+1
 }
 } # end interpret_rec()
 
-# Display the number passed in a himan-readable fashion
+# Display the number passed in a human-readable fashion
 # As appropriate, also in KB, MB, GB, TB.
 # $1 : the (large) number to display
 # $2 : the total space size 'out of' (for percentage calculation)
@@ -430,6 +428,8 @@ largenum_display()
 }
 
 #--------------------------- p r o c _ s t a r t -----------------------
+# Parameters:
+#  $1 : PID of process
 proc_start()
 {
  local szKB szMB szGB
@@ -493,9 +493,9 @@ TB_128=$(bc <<< "scale=6; 128.0*1024.0*1024.0*1024.0*1024.0")
 
    # Valid regions (segments) total size
    if [ ${IS_64_BIT} -eq 1 ]; then
-    largenum_display ${gTotalSegSize} ${TB_128} "\n Total address space that is valid memory (segments) :"
+    largenum_display ${gTotalSegSize} ${TB_128} "\n Total address space that is valid (mapped) memory :"
    else
-    largenum_display ${gTotalSegSize} ${GB_4} "\n Total address space that is valid memory (segments) :"
+    largenum_display ${gTotalSegSize} ${GB_4} "\n Total address space that is valid (mapped) memory :"
    fi
    printf "\n=======\n"
  } # stats show
