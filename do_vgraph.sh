@@ -71,6 +71,7 @@ source ${PFX}/config || {
  exit 1
 }
 
+
 ########### Functions follow #######################
 
 #-------------------- p r e p _ f i l e -------------------------------
@@ -153,12 +154,18 @@ graphit()
 local i k
 local label seg_sz num1 num2
 local szKB=0 szMB=0 szGB=0
-local         LIN="+------------------------------------------------------+"
-local ELLIPSE_LIN="~ .       .       .       .       .       .        .   ~"
-local BOX_RT_SIDE="|                                                      |"
+
+local         LIN="+----------------------------------------------------------------------+"
+local ELLIPSE_LIN="~ .       .       .       .       .       .        .       .        .  ~"
+local BOX_RT_SIDE="|                                                                      |"
+#local         LIN="+------------------------------------------------------+"
+#local ELLIPSE_LIN="~ .       .       .       .       .       .        .   ~"
+#local BOX_RT_SIDE="|                                                      |"
+
+local linelen=$((${#LIN}-2))
 local oversized=0
 
-local DIM=4
+local DIM=4 tlen=0
 for ((i=0; i<${gRow}; i+=${DIM}))
 do
     #--- Retrieve values from the array
@@ -190,15 +197,34 @@ do
     } || {
      printf "%s %08x\n" "${LIN}" "0x${num1}"
     }
-    printf "|%20s  [%d KB" ${label} ${szKB}
+
+    # Calculate the strlen of the printed string, and thus calculate and print
+    # the appropriate number of spaces after until the "|" close-box symbol
+    local len_kb=$(printf "|%20s  [%4d KB" ${label} ${szKB} |wc -c)
+    printf "|%20s  [%4d KB" ${label} ${szKB}
+
+    local len_mb=0 len_gb=0
     if (( $(echo "${szKB} > 1024" |bc -l) )); then
+      len_mb=$(printf "  %6.2f MB" ${szMB} |wc -c)
       tput bold; printf "  %6.2f MB" ${szMB}
       if (( $(echo "${szMB} > 1024" |bc -l) )); then
+        len_gb=$(printf "  %4.2f GB" ${szGB} |wc -c)
         printf "  %4.2f GB" ${szGB}
       fi
+
+      color_reset
+      local tlen=$((${len_kb}+${len_mb}+${len_gb}))
+      [ ${tlen} -lt ${linelen} ] && {
+         local spc_reqd=$((${linelen}-${tlen}))
+         printf "]%${spc_reqd}s|\n" " " # print the required # of spaces and then the '|'
+      } || printf "]\n"
+    else
+      decho "len_kb = ${len_kb}"
+      [ ${len_kb} -lt ${linelen} ] && {
+         local spc_reqd=$((${linelen}-${len_kb}))
+         printf "]%${spc_reqd}s|\n" " "  # print the required # of spaces and then the '|'
+      } || printf "]\n"
     fi
-    color_reset
-    printf "]\n"
 
     #--- NEW CALC for SCALING
     # Simplify: We base the 'height' of each segment on the number of digits
@@ -243,10 +269,6 @@ do
    		[ ${x} -eq $(((LIMIT_SCALE_SZ-1)/2)) ] && printf "%s\n" "${ELLIPSE_LIN}"
    	fi
     done
-    #---
-   #printf "%s\n" ${LIN}
-   #color_reset
-   #---
     oversized=0
 done
 
