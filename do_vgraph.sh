@@ -502,24 +502,24 @@ TB_128=$(bc <<< "scale=6; 128.0*1024.0*1024.0*1024.0*1024.0")
    [ ${gFileLines} -ne ${numvmas} ] && printf " [!] Warning! # VMAs does not match /proc/$1/maps\n"
    [ ${NULL_TRAP_SHOW} -eq 1 ] && let numvmas=numvmas+1
 
-   printf "=== Statistics: ===\n %d VMAs (segments)" ${numvmas}
+   printf "=== Statistics: ===\n %d VMAs (segments or mappings)" ${numvmas}
    # TODO - assuming the split on 64-bit is 128T:128T and on 32-bit 2:2 GB; query it
    [ ${SPARSE_SHOW} -eq 1 ] && {
      printf ", %d sparse regions\n" ${gNumSparse}
      if [ ${IS_64_BIT} -eq 1 ]; then
-      largenum_display ${gTotalSparseSize} ${TB_128} "Total address space that is Sparse :"
+      largenum_display ${gTotalSparseSize} ${TB_128} "Total user virtual address space that is Sparse :\n"
      else
-      largenum_display ${gTotalSparseSize} ${GB_4} "Total address space that is Sparse :"
+      largenum_display ${gTotalSparseSize} ${GB_4} "Total user virtual address space that is Sparse :\n"
      fi
    } # sparse show
 
    # Valid regions (segments) total size
    if [ ${IS_64_BIT} -eq 1 ]; then
-    largenum_display ${gTotalSegSize} ${TB_128} "\n Total address space that is valid (mapped) memory :"
+    largenum_display ${gTotalSegSize} ${TB_128} "\n Total user virtual address space that is valid (mapped) memory :\n"
    else
-    largenum_display ${gTotalSegSize} ${GB_4} "\n Total address space that is valid (mapped) memory :"
+    largenum_display ${gTotalSegSize} ${GB_4} "\n Total user virtual address space that is valid (mapped) memory :\n"
    fi
-   printf "\n=======\n"
+   printf "\n===\n"
  } # stats show
 } # end proc_start()
 
@@ -531,7 +531,7 @@ which bc >/dev/null || {
   exit 1
 }
 
-[ $# -ne 2 ] && {
+[ $# -lt 2 ] && {
   echo "Usage: ${name} PID-of-process input-CSV-filename(3 column format)"
   exit 1
 }
@@ -543,6 +543,7 @@ which bc >/dev/null || {
   echo "${name}: input-CSV-filename \"$2\" not readable? Aborting..."
   exit 1
 }
+[ $# -eq 3 -a "$3" = "-d" ] && export DEBUG=1
 
 gINFILE=$2
 proc_start $1
