@@ -8,9 +8,10 @@
 # where the stuff actually happens :)
 # "Draw" out, (somewhat) to scale, ranges of numbers in a vertically tiled 
 # format. For eg.: the output of /proc/iomem, /proc/vmalloc, 
-# /proc/<.pid>/maps, etc etc
+# /proc/<pid>/maps, etc etc
 # 
-# We EXPECT as input a file; the file must be in CSV format with 3 columns;
+# We EXPECT as input a file (the job of the prep_mapsfile.sh script is to
+# generate this file); the file must be in CSV format with 3 columns;
 # col 1 and col 2 are ASSuMEd to be in hexadecimal.
 # (as of this very early ver at least). 
 # FORMAT ::
@@ -19,7 +20,6 @@
 # field1,field2,field3
 #   [...]
 #
-# (As of now):
 # field1: integer value (often an address of some sort)
 # field2: integer value (often an address of some sort)
 # field3: string: descriptive
