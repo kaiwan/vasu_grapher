@@ -3,7 +3,7 @@
 
 A simple visualization (in a vertically-tiled format) of the userspace memory map of a given process. It works by iterating over the /proc/PID/maps pseudo-file of a given process. We show the segment name, the amount of virtual address space it takes up (within square brackets), and on the right side of each segment entry (at the start), it's usermode virtual address! To aid with visualization of the process VAS, we show the relative "length" of a segment (or mapping) via it's height. The script works on both 32 and 64-bit Linux OS (lightly tested, request more testing and bug/issue reports please).
 
-As an example, below, we run our script on process PID 1 on an x86_64 Ubuntu Linux box:
+As an example, below, we run our script on process PID 1 on an x86_64 Ubuntu Linux box (the output is large, and thus truncated for readability):
 
 ```
 $ ./vasu_grapher 1
