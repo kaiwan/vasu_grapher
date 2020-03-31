@@ -541,8 +541,8 @@ largenum_display()
 
 disp_fmt()
 {
- fg_red; bg_white
- printf "Fmt:  Segment:  name   [size,mode,map-type,file-offset] \n"
+ tput bold ; fg_red; bg_gray
+ printf "Fmt:  Segment:  name   [   size,mode,map-type,file-offset] \n"
  color_reset
 }
 

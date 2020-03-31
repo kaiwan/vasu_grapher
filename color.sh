@@ -45,6 +45,8 @@ fg_grey() { tput setaf 8
 #--- Background Colors
 bg_white() { tput setab 7
 }
+bg_gray() { tput setab 250
+}
 bg_red() { tput setab 1
 }
 bg_green() { tput setab 2
