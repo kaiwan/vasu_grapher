@@ -18,10 +18,14 @@
 #------------------- Colors!! Yay :-) -----------------------------------------
 # Ref: https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
 # [Ans by Drew Noakes]
+# Useful Ref! https://i.stack.imgur.com/a2S4s.png
+
 #--- Foreground Colors
 fg_black() { tput setaf 0 
 }
 fg_red() { tput setaf 1
+}
+fg_orange() { tput setaf 166
 }
 fg_green() { tput setaf 2 
 }

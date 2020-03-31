@@ -40,7 +40,7 @@
 # [.] Segment Attributes
 #     [.] seg size
 #         [ ] RSS   [ ] PSS  [ ] Swap  [ ] Locked (?)    [use smaps!]
-#     [ ] seg permissions
+#     [+] seg permissions
 # [ ] Kernel Segment details !   (requires root)
 # [ ] Reverse order: high-to-low address
 #
@@ -51,7 +51,7 @@
 #     [ ] write to SVG !
 #     [ ] interactive GUI
 #
-# Last Updated : 31jan2019
+# Last Updated : 31Mar2020
 # Created      : 26jul2017
 # 
 # Author:
@@ -111,17 +111,17 @@ decho "64-bit OS? ${IS_64_BIT}"
 } # end get_range_info()
 
 #---
-# We require a 4d array: each 'row' will hold these values:
+# We require a 6d array: each 'row' will hold these values:
 #
-#          col0   col1   col2   col3
-# row'n' [label],[size],[num1],[num2]
+#          col0     col1      col2       col3   col4    col5
+# row'n' [segname],[size],[start_uva],[end_uva],[mode],[offset]
 #
 # HOWEVER, bash only actually supports 1d array; we thus treat a simple 1d
-# array as an 'n'd (n=4) array! 
+# array as an 'n'd (n=6) array! 
 # So we just populate a 1d array like this:
 #  [val1] [val2] [val3] [val4] [val5] [val6] [val7] [val8] [...]
-# but INTERPRET it as 4d like so:
-#  ([val1],[val2],[val3],[val4]) ([val5],[val6],[val7],[val8]) [...]
+# but INTERPRET it as 6d like so:
+#  ([val1],[val2],[val3],[val4],[val5],[val6]),([val7],[val8],[val9],val[10],...) [...]
 declare -a gArray
 gRow=0
 #---
@@ -129,18 +129,23 @@ gRow=0
 #-----------------------s h o w A r r a y -----------------------------
 showArray()
 {
-local i k DIM=4
+local i k DIM=6
 echo
 decho "gRow = ${gRow}"
+# gArray ::  [segname],[size],[start_uva],[end_uva],[mode],[offset]
 for ((i=0; i<${gRow}; i+=${DIM}))
 do
-    printf "[%s, " "${gArray[${i}]}"
+    printf "[%s," "${gArray[${i}]}"   # segname
 	let k=i+1
-    printf "%d," "${gArray[${k}]}" 
+    printf "%d," "${gArray[${k}]}"     # seg size
 	let k=i+2
-    printf "%x," "0x${gArray[${k}]}" 
+    printf "%x," "0x${gArray[${k}]}"   # start uva
 	let k=i+3
-    printf "%x]\n" "0x${gArray[${k}]}" 
+    printf "%x," "0x${gArray[${k}]}"   # end uva
+	let k=i+4
+    printf "%s," "${gArray[${k}]}"     # mode+flag
+	let k=i+5
+    printf "%x]\n" "0x${gArray[${k}]}" # file offset
 done
 } # end showArray()
 
@@ -152,35 +157,35 @@ LIMIT_SCALE_SZ=10
 graphit()
 {
 local i k
-local label seg_sz num1 num2
+local segname seg_sz start_uva end_uva mode offset
 local szKB=0 szMB=0 szGB=0
 
 local         LIN="+----------------------------------------------------------------------+"
 local ELLIPSE_LIN="~ .       .       .       .       .       .        .       .        .  ~"
 local BOX_RT_SIDE="|                                                                      |"
-#local         LIN="+------------------------------------------------------+"
-#local ELLIPSE_LIN="~ .       .       .       .       .       .        .   ~"
-#local BOX_RT_SIDE="|                                                      |"
-
 local linelen=$((${#LIN}-2))
 local oversized=0
 
-local DIM=4 tlen=0
+color_reset
+local DIM=6
 for ((i=0; i<${gRow}; i+=${DIM}))
 do
-    #--- Retrieve values from the array
-    label=${gArray[${i}]}  # col 1 [str: the label]
-     #printf "%s: " "${gArray[${i}]}"
-	let k=i+1
-    seg_sz=${gArray[${k}]}  # col 2 [int: the size]
-     #printf "%d\n" "${gArray[${k}]}"
-	let k=i+2
-    num1=${gArray[${k}]}  # col 3 [int: the first number]
-     #printf "%d\n" "${gArray[${k}]}"
-	let k=i+3
-    num2=${gArray[${k}]}  # col 4 [int: the second number]
-     #printf "%d\n" "${gArray[${k}]}"
+	local tlen=0 tmp1="" tmp2="" tmp3="" tmp4="" tmp5="" tmp6=""
 
+    #--- Retrieve values from the array
+    segname=${gArray[${i}]}    # col 1 [str: the label/segment name]
+	let k=i+1
+    seg_sz=${gArray[${k}]}     # col 2 [int: the segment size]
+	let k=i+2
+    start_uva=${gArray[${k}]}  # col 3 [int: the first number, start_uva]
+	let k=i+3
+    end_uva=${gArray[${k}]}    # col 4 [int: the second number, end_uva]
+	let k=i+4
+    mode=${gArray[${k}]}       # col 5 [str: the mode+flag]
+	let k=i+5
+    offset=${gArray[${k}]}     # col 6 [int: the file offset]
+
+	# Calculate segment size in diff units as required
     szKB=$((${seg_sz}/1024))
     [ ${szKB} -ge 1024 ] && szMB=$(bc <<< "scale=2; ${szKB}/1024.0") || szMB=0
     # !EMB: if we try and use simple bash arithmetic comparison, we get a 
@@ -191,40 +196,76 @@ do
     fi
 
     #--- Drawing :-p  !
-    #fg_blue
-    [ ${IS_64_BIT} -eq 1 ] && { 
-     printf "%s %016lx\n" "${LIN}" "0x${num1}"
-    } || {
-     printf "%s %08x\n" "${LIN}" "0x${num1}"
-    }
+	# the horizontal line with the start uva at the end of it
+	# Eg.
+	# +----------------------------------------------------------------------+ 000055681263b000
+    if [ ${IS_64_BIT} -eq 1 ] ; then
+      printf "%s %016lx\n" "${LIN}" "0x${start_uva}"
+    else
+      printf "%s %08x\n" "${LIN}" "0x${start_uva}"
+    fi
+
+	#--- Collate and print the details of the current mapping (segment)
+	# Eg.
+	# |<... Sparse Region ...> [ 14.73 MB] [----,0x0]                        |
+
+	# Print segment name
+	tmp1=$(printf "%s|%20s " $(fg_orange) ${segname})
+	local segname_nocolor=$(printf "|%20s " ${segname})
+
+	# Print segment size according to scale; in KB or MB or GB
+	tlen=0
+    if (( $(echo "${szKB} < 1024" |bc -l) )); then
+		# print KB only
+		tmp2=$(printf "%s [%4d KB" $(fg_green) ${szKB})
+		tmp2_nocolor=$(printf " [%4d KB" ${szKB})
+		tlen=${#tmp2_nocolor}
+    elif (( $(echo "${szKB} > 1024" |bc -l) )); then
+      if (( $(echo "${szMB} < 1024" |bc -l) )); then
+		# print MB only
+		tmp3=$(printf "%s[%6.2f MB" $(fg_yellow) ${szMB})
+		tmp3_nocolor=$(printf "[%6.2f MB" ${szMB})
+		tlen=${#tmp3_nocolor}
+	  else
+		# print GB only
+		tmp4=$(printf "%s[%9.2f GB" $(fg_red) ${szGB})
+		tmp4_nocolor=$(printf "[%9.2f GB" ${szGB})
+		tlen=${#tmp4_nocolor}
+      fi
+	fi
+
+	# mode+flag
+	# TODO:
+	#  print in red fg if:
+	#    mode == ---
+	#    mode violates the W^X principle, i.e., w and x set
+	#
+    tmp5=$(printf "%s,%s,0x%s" $(fg_black) "${mode}" "${offset}")
+    tmp5_nocolor=$(printf ",%s,0x%s" "${mode}" "${offset}")
+	len_mode_off=${#tmp5_nocolor}
 
     # Calculate the strlen of the printed string, and thus calculate and print
-    # the appropriate number of spaces after until the "|" close-box symbol
-    local len_kb=$(printf "|%20s  [%4d KB" ${label} ${szKB} |wc -c)
-    printf "|%20s  [%4d KB" ${label} ${szKB}
+    # the appropriate number of spaces after until the "|" close-box symbol.
+	# Final strlen value:
+	local segnmlen=${#segname_nocolor}
+	if [ ${segnmlen} -lt 20 ]; then
+		segnmlen=20  # as we do printf "|%20s"...
+	fi
+	decho "segname_nocolor=\"${segname_nocolor}\" ;
+tlen = segnmlen=${segnmlen}+ tlen=${tlen} +len_mo=${len_mode_off}"
+	let tlen=${segnmlen}+${tlen}+${len_mode_off}
 
-    local len_mb=0 len_gb=0
-    if (( $(echo "${szKB} > 1024" |bc -l) )); then
-      len_mb=$(printf "  %6.2f MB" ${szMB} |wc -c)
-      tput bold; printf "  %6.2f MB" ${szMB}
-      if (( $(echo "${szMB} > 1024" |bc -l) )); then
-        len_gb=$(printf "  %4.2f GB" ${szGB} |wc -c)
-        printf "  %4.2f GB" ${szGB}
-      fi
-
-      color_reset
-      local tlen=$((${len_kb}+${len_mb}+${len_gb}))
-      [ ${tlen} -lt ${linelen} ] && {
-         local spc_reqd=$((${linelen}-${tlen}))
-         printf "]%${spc_reqd}s|\n" " " # print the required # of spaces and then the '|'
-      } || printf "]\n"
+    if [ ${tlen} -lt ${#LIN} ] ; then
+       local spc_reqd=$((${linelen}-${tlen}))
+       tmp6=$(printf "]%${spc_reqd}s|\n" " ") 
+	       # print the required # of spaces and then the '|'
     else
-      decho "len_kb = ${len_kb}"
-      [ ${len_kb} -lt ${linelen} ] && {
-         local spc_reqd=$((${linelen}-${len_kb}))
-         printf "]%${spc_reqd}s|\n" " "  # print the required # of spaces and then the '|'
-      } || printf "]\n"
-    fi
+		tmp6=$(printf "]")
+	fi
+    decho "tlen=${tlen} spc_reqd=${spc_reqd}"
+
+	# the one actual print emitted!
+	echo "${tmp1}${tmp2}${tmp3}${tmp4}${tmp5}${tmp6}"
 
     #--- NEW CALC for SCALING
     # Simplify: We base the 'height' of each segment on the number of digits
@@ -232,8 +273,8 @@ do
     segscale=${#seg_sz}    # strlen(seg_sz)
     [ ${segscale} -lt 4 ] && {   # min seg size is 4096 bytes
         echo "${name}: fatal error, segscale (# digits) <= 3! Aborting..."
-	echo "Kindly report this as a bug, thanks!"
-	exit 1
+	    echo "Kindly report this as a bug, thanks!"
+	    exit 1
     }
     decho "seg_sz = ${seg_sz} segscale=${segscale}"
 
@@ -241,41 +282,41 @@ do
     # for segscale range [1-4]
     # i.e. from 1-4 digits, i.e., 0 to 9999 bytes (ie. ~ 0 to 9.8 KB, single line
     if [ ${segscale} -ge 1 -a ${segscale} -le 4 ]; then
-	box_height=0
-    # for segscale range [5-7]
-    # i.e. for 5 digits, i.e., ~  10 KB to  99 KB, 1 line box
-    # i.e. for 6 digits, i.e., ~ 100 KB to 999 KB ~= 1 MB, 2 line box
-    # i.e. for 7 digits, i.e., ~ 1 MB to 9.9 MB, 3 line box
+		box_height=0
+		# for segscale range [5-7]
+		# i.e. for 5 digits, i.e., ~  10 KB to  99 KB, 1 line box
+		# i.e. for 6 digits, i.e., ~ 100 KB to 999 KB ~= 1 MB, 2 line box
+		# i.e. for 7 digits, i.e., ~ 1 MB to 9.9 MB, 3 line box
     elif [ ${segscale} -ge 5 -a ${segscale} -le 7 ]; then
-	let box_height=segscale-4
+		let box_height=segscale-4
     else
-    # for segscale >= 8 digits
-    # i.e. for 8 digits, i.e., from ~ 10 MB onwards, show an oversized ellipse box
-	box_height=10
+		# for segscale >= 8 digits
+		# i.e. for 8 digits, i.e., from ~ 10 MB onwards, show an oversized ellipse box
+		box_height=10
     fi
     #---
 
     # draw the sides of the 'box'
     [ ${box_height} -ge ${LIMIT_SCALE_SZ} ] && {
-   	box_height=${LIMIT_SCALE_SZ}
-   	oversized=1
+   	  box_height=${LIMIT_SCALE_SZ}
+   	  oversized=1
     }
 
     decho "box_height = ${box_height} oversized=${oversized}"
     for ((x=1; x<${box_height}; x++))
     do
-   	printf "%s\n" "${BOX_RT_SIDE}"
-   	if [ ${oversized} -eq 1 ] ; then
+   	  printf "%s\n" "${BOX_RT_SIDE}"
+   	  if [ ${oversized} -eq 1 ] ; then
    		[ ${x} -eq $(((LIMIT_SCALE_SZ-1)/2)) ] && printf "%s\n" "${ELLIPSE_LIN}"
-   	fi
+   	  fi
     done
     oversized=0
 done
 
 [ ${IS_64_BIT} -eq 1 ] && { 
- printf "%s %016lx\n" "${LIN}" "0x${num2}"
+ printf "%s %016lx\n" "${LIN}" "0x${end_uva}"
 } || {
- printf "%s %08x\n" "${LIN}" "0x${num2}"
+ printf "%s %08x\n" "${LIN}" "0x${end_uva}"
 }
 } # end graphit()
 
@@ -286,11 +327,13 @@ gTotalSegSize=0
 #------------------ i n t e r p r e t _ r e c -------------------------
 # Interpret a record: a CSV 'line' from the input stream:
 # Format:
-#  start_uva,start_uva,segment_name   ; uva = user virtual address
+#  start_uva,end_uva,mode/p|s,offset,image_file
+#     ; uva = user virtual address
 # eg.
-#  7f3390031000,7f3390053000,/lib/x86_64-linux-gnu/libc-2.28.so
+#  7f1827411000,7f1827412000,rw-p,00028000,/lib/x86_64-linux-gnu/ld-2.27.so
+# - 7f3390031000,7f3390053000,/lib/x86_64-linux-gnu/libc-2.28.so
 # Parameters:
-#  $1 : the above CSV format string tuple {start_uva,end_uva,segname}
+#  $1 : the above CSV format string of 5 fields {start_uva,end_uva,mode,off,segname}
 #  $2 : loop index
 # Populate the global '4d' array gArray.
 interpret_rec()
@@ -302,7 +345,9 @@ local end_uva=$(echo "${1}" |cut -d"${gDELIM}" -f2)
 # Skip comment lines
 echo "${start_uva}" | grep -q "^#" && return
 
-local segment=$(echo "${1}" |cut -d"${gDELIM}" -f3)
+local mode=$(echo "${1}" |cut -d"${gDELIM}" -f3)
+local offset=$(echo "${1}" |cut -d"${gDELIM}" -f4)
+local segment=$(echo "${1}" |cut -d"${gDELIM}" -f5)
 [ -z "${segment}" ] && segment=" [-unnamed-] "
 
 # Convert hex to dec
@@ -310,13 +355,12 @@ local start_dec=$(printf "%llu" 0x${start_uva})
 local end_dec=$(printf "%llu" 0x${end_uva})
 local seg_sz=$(printf "%llu" $((end_dec-start_dec)))  # in bytes
 
-# The global 4d-array's format is:
-#          col0   col1   col2   col3
-# row'n' [label],[size],[num1],[num2]
-#        segnm,  segsz,start-uva,end-uva
+# The global 6d-array's format is:
+#          col0     col1      col2       col3   col4    col5
+# row'n' [segname],[size],[start_uva],[end_uva],[mode],[offset]
 
 # Show null trap, vpage 0
-NULLTRAP_STR="[ NULL trap ]"
+NULLTRAP_STR="< NULL trap >"
 if [ ${NULL_TRAP_SHOW} -eq 1 -a $2 -eq 0 ]; then
   gArray[${gRow}]="${NULLTRAP_STR}"
   let gRow=gRow+1
@@ -326,13 +370,17 @@ if [ ${NULL_TRAP_SHOW} -eq 1 -a $2 -eq 0 ]; then
   let gRow=gRow+1
   gArray[${gRow}]=$(printf "%x" ${PAGE_SIZE})
   let gRow=gRow+1
+  gArray[${gRow}]="----"
+  let gRow=gRow+1
+  gArray[${gRow}]=0
+  let gRow=gRow+1
 fi
 
 #------------ Sparse Detection
 if [ ${SPARSE_SHOW} -eq 1 ]; then
 
 DetectedSparse=0
-SPARSE_ENTRY="<< ... Sparse Region ... >>"
+SPARSE_ENTRY="<... Sparse Region ...>"
 
 [ $2 -eq 0 ] && prevseg_end_uva=${PAGE_SIZE}
 
@@ -346,7 +394,6 @@ if [ $2 -eq 0 ] ; then   # first segment in the process
   }
 else
   decho "start_dec=${start_dec} prevseg_end_uva=${prevseg_end_uva}"
-  #printf "%x  %x\n" ${start_dec} ${prevseg_end_uva}
   gap=$((${start_dec} - ${prevseg_end_uva}))
   [ ${gap} -gt ${PAGE_SIZE} ] && {
     decho "gap = ${gap}"
@@ -356,6 +403,10 @@ fi
 
 [ ${DetectedSparse} -eq 1 ] && {
     # name / label
+	# The global 6d-array's format is:
+	#          col0     col1      col2       col3   col4    col5
+	# row'n' [segname],[size],[start_uva],[end_uva],[mode],[offset]
+
     # TODO : on 32-bit, the very last 'sparse' area is actually the kernel segment
     gArray[${gRow}]="${SPARSE_ENTRY}"
     let gRow=gRow+1
@@ -383,6 +434,14 @@ fi
     gArray[${gRow}]=$(printf "%x" $((0x${start_uva} - 0x1000)))
     let gRow=gRow+1
 
+	# mode+flag
+    gArray[${gRow}]="----"
+    let gRow=gRow+1
+
+	# file off
+    gArray[${gRow}]=0
+    let gRow=gRow+1
+
     # Stats
     [ ${STATS_SHOW} -eq 1 ] && {
       let gNumSparse=gNumSparse+1
@@ -401,6 +460,10 @@ let gRow=gRow+1
 gArray[${gRow}]=${start_uva}
 let gRow=gRow+1
 gArray[${gRow}]=${end_uva}
+let gRow=gRow+1
+gArray[${gRow}]=${mode}
+let gRow=gRow+1
+gArray[${gRow}]=${offset}
 let gRow=gRow+1
 
 [ ${STATS_SHOW} -eq 1 ] && {
@@ -449,6 +512,13 @@ largenum_display()
      printf "\n  i.e. %2.6f%%" ${pcntg}
 }
 
+disp_fmt()
+{
+ fg_red; bg_white
+ printf "Fmt:  segment name     [size,mode,file offset] \n"
+ color_reset
+}
+
 #--------------------------- p r o c _ s t a r t -----------------------
 # Parameters:
 #  $1 : PID of process
@@ -474,18 +544,22 @@ proc_start()
  # Redirect to stderr what we don't want in the log
  printf "\n%s: Processing, pl wait ...\n" "${name}" 1>&2
 
- # Populate the global '4d' array gArray.
+ disp_fmt
+
+ # Loop over the 'infile', populating the global '4d' array gArray
  local REC
  for REC in $(cat ${gINFILE})
  do 
-   #echo "REC: $REC"
+   decho "REC: $REC"
    interpret_rec ${REC} ${i}
    printf "=== %06d / %06d\r" ${i} ${gFileLines}
    let i=i+1
  done 1>&2
 
 #showArray
+#exit 0
 graphit
+disp_fmt
 
 GB_2=$(bc <<< "scale=6; 2.0*1024.0*1024.0*1024.0")
 GB_3=$(bc <<< "scale=6; 3.0*1024.0*1024.0*1024.0")
