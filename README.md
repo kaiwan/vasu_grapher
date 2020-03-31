@@ -28,11 +28,11 @@ display partial screenshots of the beginning and end of the output:
 - As a bonus, the output is logged - appended - to the file log_vasu.txt. Look up this log when done.
 
 
-Okay, the same (well, similar) output in plain text follows below:
+*Okay, the same (well, similar) output in plain text follows below:*
 
-...
-vasu_grapher $ ./vasu_grapher 1
-[sudo] password for kaiwan: 
+
+$ ./vasu_grapher 1
+[sudo] password for [whomever]: xxxxxxxxx
 
 [================---   V A S U _ G R A P H E R   ---===================]
 Virtual Address Space Usermode (VASU) process GRAPHER (via /proc/1/maps)
@@ -116,5 +116,5 @@ Fmt:  Segment:  name   [   size,mode,map-type,file-offset]
 Tue Mar 31 15:45:55 IST 2020: output logged (appended) here :
 -rw-r--r-- 1 kaiwan kaiwan 548K Mar 31 15:45 log_vasu.txt
 $ 
-```
+
 [End doc]
