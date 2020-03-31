@@ -11,9 +11,15 @@ name=$(basename $0)
 logfile_post_process()
 {
 sed -i.bkp "/###\:\:\:/d" ${1}  # take a backup & get rid of the signature line
-sed -i "s/\x1b.....//g" ${1}    # get rid of the ^[(B^[[m characters !
-      # '\x1b' is ESC ! Find it, and then delete it and the following 5 chars
-      # (the five .'s that follow specify this)
+sed -i "s/\x1b....//g" ${1}    # get rid of the ^[(B^[[m characters !
+      # '\x1b' is ESC ! Find it, and then delete it and the following 4 chars
+      # (the 4 .'s that follow specify this)
+sed -i "s/\x1m.//g" ${1}
+# get rid of the color characters !
+sed -i "s/^\;166m//g" ${1}
+sed -i "s/^mm//g" ${1}
+sed -i "s/^5\;166m//g" ${1}
+sed -i "s/47m//g" ${1}
 }
 
 [ $# -lt 1 ] && {
