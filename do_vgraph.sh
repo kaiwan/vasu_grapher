@@ -170,7 +170,11 @@ color_reset
 local DIM=6
 for ((i=0; i<${gRow}; i+=${DIM}))
 do
-	local tlen=0 tmp1="" tmp2="" tmp3="" tmp4="" tmp5="" tmp6=""
+	local tlen=0 len_perms len_maptype len_offset
+	local tmp1="" tmp2="" tmp3="" tmp4="" tmp5=""
+	local tmp5a="" tmp5b="" tmp5c="" tmp6=""
+	local segname_nocolor tmp1_nocolor tmp2_nocolor tmp3_nocolor
+	local tmp4_nocolor tmp5a_nocolor tmp5b_nocolor tmp5c_nocolor
 
     #--- Retrieve values from the array
     segname=${gArray[${i}]}    # col 1 [str: the label/segment name]
@@ -234,15 +238,41 @@ do
       fi
 	fi
 
-	# mode+flag
-	# TODO:
-	#  print in red fg if:
+	# 'mode' xxxy has two pieces of info:
+	#  - xxx is the mode (octal permissions / rwx style)
+	#  - y is either p or s, private or shared mapping
+	# seperate them out in order to print them in diff colors, etc
+	# (substr op: ${string:position:length} ; position starts @ 0)
+	local perms=$(echo ${mode:0:3})
+	local maptype=$(echo ${mode:3:1})
+
+	# mode + mapping type
+	#  print in bold red fg if:
 	#    mode == ---
 	#    mode violates the W^X principle, i.e., w and x set
-	#
-    tmp5=$(printf "%s,%s,0x%s" $(fg_black) "${mode}" "${offset}")
-    tmp5_nocolor=$(printf ",%s,0x%s" "${mode}" "${offset}")
-	len_mode_off=${#tmp5_nocolor}
+	local flag_null_perms=0 flag_wx_perms=0
+	if [ "${perms}" = "---" ]; then
+	   flag_null_perms=1
+	fi
+	echo "${perms}" | grep -q ".wx" && flag_wx_perms=1
+
+	if [ ${flag_null_perms} -eq 1 -o ${flag_wx_perms} -eq 1 ] ; then
+		tmp5a=$(printf "%s%s,%s%s," $(tput bold) $(fg_red) "${perms}" $(color_reset))
+	else
+		tmp5a=$(printf "%s,%s," $(fg_black) "${perms}")
+	fi
+	tmp5a_nocolor=$(printf ",%s," "${perms}")
+	len_perms=${#tmp5a_nocolor}
+
+	# mapping type
+	tmp5b=$(printf "%s%s%s," $(fg_blue) "${maptype}" $(fg_black))
+	tmp5b_nocolor=$(printf "%s," "${maptype}")
+	len_maptype=${#tmp5b_nocolor}
+
+	# file offset
+	tmp5c=$(printf "%s0x%s" $(fg_black) "${offset}")
+	tmp5c_nocolor=$(printf "0x%s" "${offset}")
+	len_offset=${#tmp5c_nocolor}
 
     # Calculate the strlen of the printed string, and thus calculate and print
     # the appropriate number of spaces after until the "|" close-box symbol.
@@ -251,9 +281,7 @@ do
 	if [ ${segnmlen} -lt 20 ]; then
 		segnmlen=20  # as we do printf "|%20s"...
 	fi
-	decho "segname_nocolor=\"${segname_nocolor}\" ;
-tlen = segnmlen=${segnmlen}+ tlen=${tlen} +len_mo=${len_mode_off}"
-	let tlen=${segnmlen}+${tlen}+${len_mode_off}
+	let tlen=${segnmlen}+${tlen}+${len_perms}+${len_maptype}+${len_offset}
 
     if [ ${tlen} -lt ${#LIN} ] ; then
        local spc_reqd=$((${linelen}-${tlen}))
@@ -262,10 +290,10 @@ tlen = segnmlen=${segnmlen}+ tlen=${tlen} +len_mo=${len_mode_off}"
     else
 		tmp6=$(printf "]")
 	fi
-    decho "tlen=${tlen} spc_reqd=${spc_reqd}"
+    #decho "tlen=${tlen} spc_reqd=${spc_reqd}"
 
 	# the one actual print emitted!
-	echo "${tmp1}${tmp2}${tmp3}${tmp4}${tmp5}${tmp6}"
+	echo "${tmp1}${tmp2}${tmp3}${tmp4}${tmp5a}${tmp5b}${tmp5c}${tmp6}"
 
     #--- NEW CALC for SCALING
     # Simplify: We base the 'height' of each segment on the number of digits
@@ -507,7 +535,6 @@ largenum_display()
        fi
      fi
 
-     #local pcntg=$(bc <<< "scale=12; (${1}/(128.0*1024*1024*1024*1024))*100.0")
      local pcntg=$(bc <<< "scale=12; (${1}/${2})*100.0")
      printf "\n  i.e. %2.6f%%" ${pcntg}
 }
@@ -515,7 +542,7 @@ largenum_display()
 disp_fmt()
 {
  fg_red; bg_white
- printf "Fmt:  segment name     [size,mode,file offset] \n"
+ printf "Fmt:  Segment:  name   [size,mode,map-type,file-offset] \n"
  color_reset
 }
 
