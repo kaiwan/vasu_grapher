@@ -30,7 +30,7 @@ display partial screenshots of the beginning and end of the output:
 
 *Okay, the same (well, similar) output in plain text follows below:*
 
-
+...
 $ ./vasu_grapher 1
 [sudo] password for [whomever]: xxxxxxxxx
 
@@ -72,7 +72,7 @@ Fmt:  Segment:  name   [   size,mode,map-type,file-offset]
 |/lib/systemd/systemd  [   4 KB,rw-,p,0x00189000]                      |
 
 
-[...]
+--snip--
 
 
 +----------------------------------------------------------------------+ 00007f867d368000
@@ -116,5 +116,5 @@ Fmt:  Segment:  name   [   size,mode,map-type,file-offset]
 Tue Mar 31 15:45:55 IST 2020: output logged (appended) here :
 -rw-r--r-- 1 kaiwan kaiwan 548K Mar 31 15:45 log_vasu.txt
 $ 
-
+...
 [End doc]
