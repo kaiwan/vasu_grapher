@@ -158,7 +158,7 @@ graphit()
 {
 local i k
 local segname seg_sz start_uva end_uva mode offset
-local szKB=0 szMB=0 szGB=0
+local szKB=0 szMB=0 szGB=0 szTB=0
 
 local         LIN="+----------------------------------------------------------------------+"
 local ELLIPSE_LIN="~ .       .       .       .       .       .        .       .        .  ~"
@@ -175,6 +175,7 @@ do
 	local tmp5a="" tmp5b="" tmp5c="" tmp6=""
 	local segname_nocolor tmp1_nocolor tmp2_nocolor tmp3_nocolor
 	local tmp4_nocolor tmp5a_nocolor tmp5b_nocolor tmp5c_nocolor
+	local tmp5 tmp5_nocolor
 
     #--- Retrieve values from the array
     segname=${gArray[${i}]}    # col 1 [str: the label/segment name]
@@ -198,6 +199,10 @@ do
     if (( $(echo "${szMB} > 1024" |bc -l) )); then
       szGB=$(bc <<< "scale=2; ${szMB}/1024.0")
     fi
+    szTB=0
+    if (( $(echo "${szGB} > 1024" |bc -l) )); then
+      szTB=$(bc <<< "scale=2; ${szGB}/1024.0")
+    fi
 
     #--- Drawing :-p  !
 	# the horizontal line with the start uva at the end of it
@@ -217,7 +222,7 @@ do
 	tmp1=$(printf "%s|%20s " $(fg_orange) ${segname})
 	local segname_nocolor=$(printf "|%20s " ${segname})
 
-	# Print segment size according to scale; in KB or MB or GB
+	# Print segment size according to scale; in KB or MB or GB or TB
 	tlen=0
     if (( $(echo "${szKB} < 1024" |bc -l) )); then
 		# print KB only
@@ -230,12 +235,19 @@ do
 		tmp3=$(printf "%s[%6.2f MB" $(fg_yellow) ${szMB})
 		tmp3_nocolor=$(printf "[%6.2f MB" ${szMB})
 		tlen=${#tmp3_nocolor}
-	  else
+    elif (( $(echo "${szKB} > 1024" |bc -l) )); then
+      if (( $(echo "${szGB} < 1024" |bc -l) )); then
 		# print GB only
-		tmp4=$(printf "%s[%9.2f GB" $(fg_red) ${szGB})
-		tmp4_nocolor=$(printf "[%9.2f GB" ${szGB})
+		tmp4=$(printf "%s[%6.2f GB" $(fg_yellow) ${szGB})
+		tmp4_nocolor=$(printf "[%6.2f GB" ${szGB})
 		tlen=${#tmp4_nocolor}
+	else
+		# print TB only
+		tmp5=$(printf "%s[%9.2f TB" $(fg_red) ${szTB})
+		tmp5_nocolor=$(printf "[%9.2f TB" ${szTB})
+		tlen=${#tmp5_nocolor}
       fi
+	 fi
 	fi
 
 	# 'mode' xxxy has two pieces of info:
@@ -293,7 +305,7 @@ do
     #decho "tlen=${tlen} spc_reqd=${spc_reqd}"
 
 	# the one actual print emitted!
-	echo "${tmp1}${tmp2}${tmp3}${tmp4}${tmp5a}${tmp5b}${tmp5c}${tmp6}"
+	echo "${tmp1}${tmp2}${tmp3}${tmp4}${tmp5}${tmp5a}${tmp5b}${tmp5c}${tmp6}"
 
     #--- NEW CALC for SCALING
     # Simplify: We base the 'height' of each segment on the number of digits
